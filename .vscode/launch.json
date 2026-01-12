@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "somang_reading_jesus_admin",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+                "-d",
+                "windows"
+            ]
+        },
+        {
+            "name": "somang_reading_jesus_admin (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "args": [
+                "-d",
+                "windows"
+            ]
+        }
+    ]
+}
