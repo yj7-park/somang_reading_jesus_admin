@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rxdart/rxdart.dart';
 import '../models/user_profile.dart';
 import '../models/church_roster.dart';
+import '../models/reading_schedule.dart';
+import '../utils/date_helper.dart';
 
 class UserAndRosterService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -72,28 +74,88 @@ class UserAndRosterService {
   // --- Real-time Stream Support ---
 
   Stream<Map<String, dynamic>> getCombinedUserRosterStream() {
-    return CombineLatestStream.combine3(
-      _usersRef.snapshots(),
-      _rosterRef.snapshots(),
-      _db.collectionGroup('stats').snapshots(),
-      (usersSnap, rosterSnap, statsSnap) {
-        final users = usersSnap.docs
-            .map((d) => UserProfile.fromFirestore(d))
-            .toList();
-        final roster = rosterSnap.docs
-            .map((d) => ChurchRoster.fromFirestore(d))
-            .toList();
+    final now = DateTime.now();
+    final yearStr = now.year.toString();
 
-        Map<String, Map<String, dynamic>> statsMap = {};
-        for (var doc in statsSnap.docs) {
-          final parentDoc = doc.reference.parent.parent;
-          if (parentDoc != null) {
-            statsMap[parentDoc.id] = doc.data();
-          }
+    // 1. Get Schedule Stream
+    final scheduleStream = _db
+        .collection('config')
+        .doc('schedule')
+        .collection('years')
+        .doc(yearStr)
+        .snapshots();
+
+    return scheduleStream.switchMap((scheduleDoc) {
+      // Calculate today's reading position
+      int year = now.year;
+      int week = -1;
+      int day = -1;
+
+      if (scheduleDoc.exists) {
+        final schedule = ReadingSchedule.fromFirestore(scheduleDoc);
+        final pos = DateHelper.getReadingPosition(now, schedule);
+        if (pos != null) {
+          year = pos.year;
+          week = pos.week;
+          day = pos.day;
         }
+      }
 
-        return {'users': users, 'roster': roster, 'stats': statsMap};
-      },
-    );
+      // 2. Composed Query for today's completions
+      // If today is not a reading day (week/day == -1), we return an empty stream or a dummy one.
+      Stream<QuerySnapshot> completionsStream;
+      if (week != -1) {
+        completionsStream = _db
+            .collectionGroup('completions')
+            .where('year', isEqualTo: year)
+            .where('week', isEqualTo: week)
+            .where('day', isEqualTo: day)
+            .snapshots();
+      } else {
+        // Return a dummy stream with no results for non-reading days
+        completionsStream = Stream.value(null).cast<QuerySnapshot>();
+        // Note: This needs careful handling in combine.
+      }
+
+      return CombineLatestStream.combine4(
+        _usersRef.snapshots(),
+        _rosterRef.snapshots(),
+        completionsStream,
+        _db.collectionGroup('stats').snapshots(),
+        (usersSnap, rosterSnap, QuerySnapshot? completionsSnap, statsSnap) {
+          final users = usersSnap.docs
+              .map((d) => UserProfile.fromFirestore(d))
+              .toList();
+          final roster = rosterSnap.docs
+              .map((d) => ChurchRoster.fromFirestore(d))
+              .toList();
+
+          Set<String> todayCompletedUids = {};
+          if (completionsSnap != null) {
+            for (var doc in completionsSnap.docs) {
+              final parentDoc = doc.reference.parent.parent;
+              if (parentDoc != null) {
+                todayCompletedUids.add(parentDoc.id);
+              }
+            }
+          }
+
+          Map<String, Map<String, dynamic>> statsMap = {};
+          for (var doc in statsSnap.docs) {
+            final parentDoc = doc.reference.parent.parent;
+            if (parentDoc != null) {
+              statsMap[parentDoc.id] = doc.data();
+            }
+          }
+
+          return {
+            'users': users,
+            'roster': roster,
+            'todayCompletedUids': todayCompletedUids,
+            'stats': statsMap,
+          };
+        },
+      );
+    });
   }
 }

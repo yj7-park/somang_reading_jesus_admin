@@ -4,6 +4,8 @@ import '../models/user_profile.dart';
 import '../models/church_roster.dart';
 import '../services/user_roster_service.dart';
 import '../utils/format_helper.dart';
+import '../providers/navigation_provider.dart';
+import 'package:provider/provider.dart';
 import 'user_detail_screen.dart';
 
 class UserListScreen extends StatefulWidget {
@@ -21,6 +23,8 @@ class _UserListScreenState extends State<UserListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final navProvider = context.watch<NavigationProvider>();
+
     return StreamBuilder<Map<String, dynamic>>(
       stream: _service.getCombinedUserRosterStream(),
       builder: (context, snapshot) {
@@ -41,6 +45,7 @@ class _UserListScreenState extends State<UserListScreen> {
         final List<UserProfile> users = data['users'];
         final List<ChurchRoster> roster = data['roster'];
         final Map<String, Map<String, dynamic>> userStats = data['stats'];
+        final Set<String> todayCompletedUids = data['todayCompletedUids'] ?? {};
 
         // Merge Logic:
         final Set<String> registeredPhones = users
@@ -57,8 +62,19 @@ class _UserListScreenState extends State<UserListScreen> {
         // Filter
         List<dynamic> filteredList = mergedList.where((item) {
           bool isRegistered = item is UserProfile;
-          if (_filterStatus == 'Registered') return isRegistered;
-          if (_filterStatus == 'Unregistered') return !isRegistered;
+
+          // Status Filter (Registered/Unregistered)
+          if (_filterStatus == 'Registered' && !isRegistered) return false;
+          if (_filterStatus == 'Unregistered' && isRegistered) return false;
+
+          // Today's Reader Filter (Task-specific)
+          if (navProvider.showOnlyTodayReaders) {
+            if (!isRegistered) return false;
+            if (!todayCompletedUids.contains(item.uid)) {
+              return false;
+            }
+          }
+
           return true;
         }).toList();
 
@@ -141,6 +157,9 @@ class _UserListScreenState extends State<UserListScreen> {
                       value: 'Unregistered',
                       activeColor: Colors.orange.withOpacity(0.1),
                     ),
+                    const Spacer(),
+                    // Today's Readers Pulse Filter
+                    _buildTodayFilterChip(navProvider),
                   ],
                 ),
               ),
@@ -375,6 +394,25 @@ class _UserListScreenState extends State<UserListScreen> {
         ),
       ),
       showCheckmark: false,
+    );
+  }
+
+  Widget _buildTodayFilterChip(NavigationProvider navProvider) {
+    final bool isSelected = navProvider.showOnlyTodayReaders;
+    return FilterChip(
+      label: const Text("오늘의 통독자", style: TextStyle(fontSize: 12)),
+      selected: isSelected,
+      onSelected: (selected) {
+        navProvider.setShowOnlyTodayReaders(selected);
+      },
+      selectedColor: Colors.green.withOpacity(0.2),
+      checkmarkColor: Colors.green,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isSelected ? Colors.green : Colors.grey.shade300,
+        ),
+      ),
     );
   }
 

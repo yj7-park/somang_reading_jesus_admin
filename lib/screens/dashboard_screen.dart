@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/stats_service.dart';
+import '../providers/navigation_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -13,6 +15,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final navProvider = context.read<NavigationProvider>();
+
     return Scaffold(
       appBar: AppBar(title: const Text('대시보드')),
       body: StreamBuilder<Map<String, dynamic>>(
@@ -59,6 +63,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           value: "$totalUsers명",
                           icon: Icons.group,
                           color: Colors.blue,
+                          onTap: () {
+                            navProvider.setIndex(1);
+                            navProvider.setShowOnlyTodayReaders(false);
+                          },
                         ),
                         _buildStatCard(
                           title: "오늘 통독자",
@@ -68,6 +76,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               : "0%",
                           icon: Icons.menu_book,
                           color: Colors.green,
+                          onTap: () {
+                            navProvider.navigateToUserListWithTodayFilter();
+                          },
                         ),
                         _buildStatCard(
                           title: "평균 진행률",
@@ -204,46 +215,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String? subtitle,
     required IconData icon,
     required Color color,
+    VoidCallback? onTap,
   }) {
     return Card(
       elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 32),
               ),
-              child: Icon(icon, color: color, size: 32),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (subtitle != null)
+              const SizedBox(width: 16),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    subtitle,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    title,
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
-              ],
-            ),
-          ],
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

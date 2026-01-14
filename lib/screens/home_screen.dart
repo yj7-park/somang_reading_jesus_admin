@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dashboard_screen.dart';
 import 'user_list_screen.dart';
 import 'schedule_screen.dart';
 import 'content_screen.dart';
 import 'notice_screen.dart';
 import '../services/auth_service.dart';
+import '../providers/navigation_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,8 +16,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-
   final List<Widget> _screens = [
     const DashboardScreen(),
     const UserListScreen(),
@@ -26,20 +26,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final navProvider = context.watch<NavigationProvider>();
+
     return Scaffold(
       body: Row(
         children: [
           NavigationRail(
-            selectedIndex: _selectedIndex,
+            selectedIndex: navProvider.selectedIndex,
             onDestinationSelected: (int index) {
-              setState(() {
-                _selectedIndex = index;
-              });
+              navProvider.setIndex(index);
             },
             labelType: NavigationRailLabelType.all,
-            leading: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20.0),
-              child: const Icon(Icons.menu_book, size: 32),
+            leading: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20.0),
+              child: Icon(Icons.menu_book, size: 32),
             ),
             destinations: const [
               NavigationRailDestination(
@@ -84,7 +84,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
-            child: IndexedStack(index: _selectedIndex, children: _screens),
+            child: IndexedStack(
+              index: navProvider.selectedIndex,
+              children: _screens,
+            ),
           ),
         ],
       ),
