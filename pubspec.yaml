@@ -54,6 +54,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  msix: ^3.16.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -65,6 +66,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/icon/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -96,3 +99,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+msix_config:
+  display_name: 소망 성경 읽기 어드민
+  publisher_display_name: 소망교회
+  publisher: CN=SomangChurch, O=SomangChurch, L=Seoul, S=Seoul, C=KR
+  identity_name: com.somang.reading.jesus.admin
+  msix_version: 1.0.0.0
+  logo_path: assets/icon/logo.png
+  capabilities: internetClient
