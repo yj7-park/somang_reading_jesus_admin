@@ -7,10 +7,7 @@ import 'package:flutter/foundation.dart';
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return DefaultFirebaseOptions.web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -29,15 +26,7 @@ class DefaultFirebaseOptions {
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.windows:
-        return const FirebaseOptions(
-          apiKey: 'AIzaSyAREedrHpB0CCyn_WgUjuWyi9AewVQ-l4A',
-          appId: '1:415585262962:web:7bbc1c0c92c72eef7d11eb',
-          messagingSenderId: '415585262962',
-          projectId: 'reading-jesus-somang',
-          authDomain: 'reading-jesus-somang.firebaseapp.com',
-          storageBucket: 'reading-jesus-somang.firebasestorage.app',
-          measurementId: 'G-MSCT2Q04SE',
-        );
+        return DefaultFirebaseOptions.windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -49,4 +38,24 @@ class DefaultFirebaseOptions {
         );
     }
   }
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyAREedrHpB0CCyn_WgUjuWyi9AewVQ-l4A',
+    appId: '1:415585262962:web:7bbc1c0c92c72eef7d11eb',
+    messagingSenderId: '415585262962',
+    projectId: 'reading-jesus-somang',
+    authDomain: 'reading-jesus-somang.firebaseapp.com',
+    storageBucket: 'reading-jesus-somang.firebasestorage.app',
+    measurementId: 'G-MSCT2Q04SE',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyAREedrHpB0CCyn_WgUjuWyi9AewVQ-l4A',
+    appId: '1:415585262962:web:7bbc1c0c92c72eef7d11eb',
+    messagingSenderId: '415585262962',
+    projectId: 'reading-jesus-somang',
+    authDomain: 'reading-jesus-somang.firebaseapp.com',
+    storageBucket: 'reading-jesus-somang.firebasestorage.app',
+    measurementId: 'G-MSCT2Q04SE',
+  );
 }
