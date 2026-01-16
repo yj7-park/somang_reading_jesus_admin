@@ -34,7 +34,7 @@ if ($confirmation -ne "y") {
 
 # 4. Build Windows
 Write-Host "Building Windows application..." -ForegroundColor Cyan
-flutter build windows --release
+flutter build windows --release --dart-define-from-file=secrets.json
 if ($LASTEXITCODE -ne 0) { Write-Error "Build failed"; exit 1 }
 
 # 5. Build Web
@@ -42,7 +42,7 @@ $webDeploy = Read-Host "Build and deploy to Web? (y/n)"
 if ($webDeploy -eq "y") {
     Write-Host "Building Web application..." -ForegroundColor Cyan
     # Adjust base-href if needed. For yj7-park.github.io/somang_reading_jesus_admin/, it should be:
-    flutter build web --release --base-href "/somang_reading_jesus_admin/"
+    flutter build web --release --base-href "/somang_reading_jesus_admin/" --dart-define-from-file=secrets.json
     if ($LASTEXITCODE -ne 0) { Write-Error "Web build failed"; exit 1 }
 }
 

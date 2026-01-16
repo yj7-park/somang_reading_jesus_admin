@@ -40,22 +40,22 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAREedrHpB0CCyn_WgUjuWyi9AewVQ-l4A',
-    appId: '1:415585262962:web:7bbc1c0c92c72eef7d11eb',
-    messagingSenderId: '415585262962',
-    projectId: 'reading-jesus-somang',
-    authDomain: 'reading-jesus-somang.firebaseapp.com',
-    storageBucket: 'reading-jesus-somang.firebasestorage.app',
-    measurementId: 'G-MSCT2Q04SE',
+    apiKey: String.fromEnvironment('FIREBASE_API_KEY_WEB'),
+    appId: String.fromEnvironment('FIREBASE_APP_ID_WEB'),
+    messagingSenderId: String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
+    projectId: String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    authDomain: String.fromEnvironment('FIREBASE_AUTH_DOMAIN'),
+    storageBucket: String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
+    measurementId: String.fromEnvironment('FIREBASE_MEASUREMENT_ID'),
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAREedrHpB0CCyn_WgUjuWyi9AewVQ-l4A',
-    appId: '1:415585262962:web:7bbc1c0c92c72eef7d11eb',
-    messagingSenderId: '415585262962',
-    projectId: 'reading-jesus-somang',
-    authDomain: 'reading-jesus-somang.firebaseapp.com',
-    storageBucket: 'reading-jesus-somang.firebasestorage.app',
-    measurementId: 'G-MSCT2Q04SE',
+    apiKey: String.fromEnvironment('FIREBASE_API_KEY_WINDOWS'),
+    appId: String.fromEnvironment('FIREBASE_APP_ID_WINDOWS'),
+    messagingSenderId: String.fromEnvironment('FIREBASE_MESSAGING_SENDER_ID'),
+    projectId: String.fromEnvironment('FIREBASE_PROJECT_ID'),
+    authDomain: String.fromEnvironment('FIREBASE_AUTH_DOMAIN'),
+    storageBucket: String.fromEnvironment('FIREBASE_STORAGE_BUCKET'),
+    measurementId: String.fromEnvironment('FIREBASE_MEASUREMENT_ID'),
   );
 }
