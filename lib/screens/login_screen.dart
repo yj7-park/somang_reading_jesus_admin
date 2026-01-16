@@ -10,18 +10,18 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final AuthService _authService = AuthService();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _otpController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isCodeSent = false;
+  String? _verificationId;
   String? _errorMessage;
 
-  Future<void> _login() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = "이메일과 비밀번호를 모두 입력해 주세요.");
+  Future<void> _sendCode() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      setState(() => _errorMessage = "휴대폰 번호를 입력해 주세요.");
       return;
     }
 
@@ -31,8 +31,54 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      debugPrint("Attempting login for: $email");
-      await _authService.signInWithEmail(email, password);
+      // Basic formatting for Korean phone numbers if missing +82
+      String formattedPhone = phone;
+      if (!phone.startsWith('+')) {
+        if (phone.startsWith('0')) {
+          formattedPhone = '+82${phone.substring(1)}';
+        } else {
+          formattedPhone = '+82$phone';
+        }
+      }
+
+      await _authService.verifyPhoneNumber(
+        phoneNumber: formattedPhone,
+        onCodeSent: (verificationId) {
+          setState(() {
+            _isLoading = false;
+            _isCodeSent = true;
+            _verificationId = verificationId;
+          });
+        },
+        onVerificationFailed: (e) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = "인증번호 발송 실패: ${e.message}";
+          });
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "오류가 발생했습니다: $e";
+      });
+    }
+  }
+
+  Future<void> _verifyAndLogin() async {
+    final otp = _otpController.text.trim();
+    if (otp.isEmpty || _verificationId == null) {
+      setState(() => _errorMessage = "인증번호를 입력해 주세요.");
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.signInWithCredential(_verificationId!, otp);
 
       // Verify admin role
       final isAdmin = await _authService.isAdmin();
@@ -42,18 +88,17 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           setState(() {
             _isLoading = false;
+            _isCodeSent = false;
             _errorMessage =
                 "관리 권한이 없는 계정입니다.\nUID: $uid\n(Firestore에 위 UID로 문서를 생성하고 role: 'admin'을 추가해 주세요.)";
           });
         }
       }
-      // If admin, main.dart's StreamBuilder will handle the navigation to HomeScreen
     } catch (e) {
-      debugPrint("Login error: $e");
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = "로그인 실패: 이메일 또는 비밀번호를 확인해 주세요.";
+          _errorMessage = "로그인 실패: 인증번호를 확인해 주세요.";
         });
       }
     }
@@ -120,33 +165,38 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: "이메일 주소",
-                  prefixIcon: Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(),
-                  hintText: "admin@example.com",
+              if (!_isCodeSent)
+                TextField(
+                  controller: _phoneController,
+                  decoration: const InputDecoration(
+                    labelText: "휴대폰 번호",
+                    prefixIcon: Icon(Icons.phone_android_outlined),
+                    border: OutlineInputBorder(),
+                    hintText: "01012345678",
+                  ),
+                  keyboardType: TextInputType.phone,
+                  onSubmitted: (_) => _sendCode(),
+                )
+              else
+                TextField(
+                  controller: _otpController,
+                  decoration: const InputDecoration(
+                    labelText: "인증번호 (6자리)",
+                    prefixIcon: Icon(Icons.lock_clock_outlined),
+                    border: OutlineInputBorder(),
+                    hintText: "123456",
+                  ),
+                  keyboardType: TextInputType.number,
+                  onSubmitted: (_) => _verifyAndLogin(),
                 ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: "비밀번호",
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-                onSubmitted: (_) => _login(),
-              ),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
+                  onPressed: _isLoading
+                      ? null
+                      : (_isCodeSent ? _verifyAndLogin : _sendCode),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     foregroundColor: Colors.white,
@@ -164,15 +214,25 @@ class _LoginScreenState extends State<LoginScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text(
-                          "로그인",
-                          style: TextStyle(
+                      : Text(
+                          _isCodeSent ? "인증 및 로그인" : "인증번호 발송",
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                 ),
               ),
+              if (_isCodeSent)
+                TextButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () => setState(() {
+                          _isCodeSent = false;
+                          _errorMessage = null;
+                        }),
+                  child: const Text("번호 다시 입력하기"),
+                ),
               const SizedBox(height: 20),
               Text(
                 "Copy Right © 2026 소망교회",

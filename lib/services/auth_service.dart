@@ -19,6 +19,36 @@ class AuthService {
     );
   }
 
+  // Phone Authentication (Web/Windows support depends on Firebase implementation)
+  Future<void> verifyPhoneNumber({
+    required String phoneNumber,
+    required Function(String verificationId) onCodeSent,
+    required Function(FirebaseAuthException e) onVerificationFailed,
+  }) async {
+    await _auth.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      verificationCompleted: (PhoneAuthCredential credential) async {
+        await _auth.signInWithCredential(credential);
+      },
+      verificationFailed: onVerificationFailed,
+      codeSent: (String verificationId, int? resendToken) {
+        onCodeSent(verificationId);
+      },
+      codeAutoRetrievalTimeout: (String verificationId) {},
+    );
+  }
+
+  Future<UserCredential> signInWithCredential(
+    String verificationId,
+    String smsCode,
+  ) async {
+    PhoneAuthCredential credential = PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
+    return await _auth.signInWithCredential(credential);
+  }
+
   // Check if current user is admin
   Future<bool> isAdmin() async {
     final user = _auth.currentUser;
