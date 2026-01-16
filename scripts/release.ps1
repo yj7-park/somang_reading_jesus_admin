@@ -37,12 +37,21 @@ Write-Host "Building Windows application..." -ForegroundColor Cyan
 flutter build windows --release
 if ($LASTEXITCODE -ne 0) { Write-Error "Build failed"; exit 1 }
 
-# 5. Build MSIX
+# 5. Build Web
+$webDeploy = Read-Host "Build and deploy to Web? (y/n)"
+if ($webDeploy -eq "y") {
+    Write-Host "Building Web application..." -ForegroundColor Cyan
+    # Adjust base-href if needed. For yj7-park.github.io/somang_reading_jesus_admin/, it should be:
+    flutter build web --release --base-href "/somang_reading_jesus_admin/"
+    if ($LASTEXITCODE -ne 0) { Write-Error "Web build failed"; exit 1 }
+}
+
+# 6. Build MSIX
 Write-Host "Creating MSIX installer..." -ForegroundColor Cyan
 dart run msix:create
 if ($LASTEXITCODE -ne 0) { Write-Error "MSIX creation failed"; exit 1 }
 
-# 6. Create Portable ZIP
+# 7. Create Portable ZIP
 $zipName = "${projectName}_v${version}_portable.zip"
 $buildPath = "build\windows\x64\runner\Release\*"
 Write-Host "Creating portable ZIP: $zipName..." -ForegroundColor Cyan
@@ -50,18 +59,58 @@ if (Test-Path $zipName) { Remove-Item $zipName }
 Compress-Archive -Path $buildPath -DestinationPath $zipName -Force
 if ($LASTEXITCODE -ne 0) { Write-Error "ZIP creation failed"; exit 1 }
 
-# 7. Git Operations
+# 8. Git Operations
 Write-Host "Tagging and pushing to origin..." -ForegroundColor Cyan
-git tag $tagName
+# Check if tag exists
+if (git tag -l $tagName) {
+    Write-Host "Tag $tagName already exists. Skipping tag creation." -ForegroundColor Yellow
+} else {
+    git tag $tagName
+}
 git push origin main
-git push origin $tagName
+git push origin $tagName --force
 
-# 8. GitHub Release
-Write-Host "Creating GitHub release and uploading assets..." -ForegroundColor Cyan
+# 9. GitHub Release
+Write-Host "Creating/Updating GitHub release and uploading assets..." -ForegroundColor Cyan
 $msixPath = "build\windows\x64\runner\Release\${projectName}.msix"
-gh release create $tagName $zipName $msixPath --title "$tagName Release" --notes "Automated release for $tagName"
 
-# 9. Optional Sync to Secondary Remote
+# Check if release exists
+gh release view $tagName > $null 2>&1
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "Release $tagName already exists. Uploading assets..." -ForegroundColor Yellow
+    gh release upload $tagName $zipName $msixPath --clobber
+} else {
+    gh release create $tagName $zipName $msixPath --title "$tagName Release" --notes "Automated release for $tagName"
+}
+
+# 10. Web Deployment to gh-pages
+if ($webDeploy -eq "y") {
+    Write-Host "Deploying to GitHub Pages (gh-pages branch)..." -ForegroundColor Cyan
+    
+    $tempDir = [System.IO.Path]::GetTempFileName()
+    Remove-Item $tempDir
+    New-Item -ItemType Directory -Path $tempDir
+    
+    Copy-Item -Path "build\web\*" -Destination $tempDir -Recurse -Force
+    
+    $currentDir = Get-Location
+    Set-Location $tempDir
+    
+    git init
+    git add .
+    git commit -m "deploy: web version $tagName"
+    
+    $remoteUrl = (git -C $currentDir remote get-url origin)
+    git remote add origin $remoteUrl
+    git push origin "master:refs/heads/gh-pages" --force
+    
+    Set-Location $currentDir
+    Remove-Item -Recurse -Force $tempDir
+    
+    Write-Host "Web deployment successfully pushed to gh-pages." -ForegroundColor Green
+}
+
+# 11. Optional Sync to Secondary Remote
 $syncTarget = Read-Host "Sync tags to $secondaryRemote? (y/n)"
 if ($syncTarget -eq "y") {
     Write-Host "Pushing to $secondaryRemote..." -ForegroundColor Cyan
