@@ -73,50 +73,87 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         ],
       ),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left Panel: Year Selector
-          Container(
-            width: 200,
-            decoration: BoxDecoration(
-              border: Border(right: BorderSide(color: Colors.grey.shade300)),
-            ),
-            child: ListView(
-              children: _availableYears
-                  .map(
-                    (year) => ListTile(
-                      title: Text('$year년'),
-                      selected: year == _selectedYear,
-                      onTap: () => setState(() => _selectedYear = year),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool isNarrow = constraints.maxWidth < 600;
+
+          final detailPanel = StreamBuilder<ReadingSchedule?>(
+            stream: _service.getScheduleStream(_selectedYear),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final schedule = snapshot.data;
+              if (schedule == null) {
+                return const Center(child: Text('No Data'));
+              }
+
+              return _buildScheduleDetail(schedule);
+            },
+          );
+
+          if (isNarrow) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedYear,
+                    decoration: const InputDecoration(
+                      labelText: '연도 선택',
+                      border: OutlineInputBorder(),
                     ),
-                  )
-                  .toList(),
-            ),
-          ),
+                    items: _availableYears
+                        .map(
+                          (year) => DropdownMenuItem(
+                            value: year,
+                            child: Text('$year년'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _selectedYear = v);
+                    },
+                  ),
+                ),
+                Expanded(child: detailPanel),
+              ],
+            );
+          } else {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Left Panel: Year Selector
+                Container(
+                  width: 200,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  child: ListView(
+                    children: _availableYears
+                        .map(
+                          (year) => ListTile(
+                            title: Text('$year년'),
+                            selected: year == _selectedYear,
+                            onTap: () => setState(() => _selectedYear = year),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
 
-          // Right Panel: Details
-          Expanded(
-            child: StreamBuilder<ReadingSchedule?>(
-              stream: _service.getScheduleStream(_selectedYear),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final schedule = snapshot.data;
-                if (schedule == null) {
-                  return const Center(child: Text('No Data'));
-                }
-
-                return _buildScheduleDetail(schedule);
-              },
-            ),
-          ),
-        ],
+                // Right Panel: Details
+                Expanded(child: detailPanel),
+              ],
+            );
+          }
+        },
       ),
     );
   }

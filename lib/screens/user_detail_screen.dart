@@ -146,15 +146,17 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.user.name)),
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left Panel: User Info Edit
-          Container(
-            width: 300,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool isNarrow = constraints.maxWidth < 600;
+
+          final profilePanel = Container(
+            width: isNarrow ? double.infinity : 300,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              border: Border(right: BorderSide(color: Colors.grey.shade300)),
+              border: isNarrow
+                  ? Border(top: BorderSide(color: Colors.grey.shade300))
+                  : Border(right: BorderSide(color: Colors.grey.shade300)),
             ),
             child: Column(
               children: [
@@ -227,24 +229,29 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                 ),
               ],
             ),
-          ),
+          );
 
-          // Right Panel: Calendar
-          Expanded(
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    "통독 기록 (날짜를 클릭하여 완료 여부를 변경하세요)",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+          final calendarPanel = Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  "통독 기록",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                Expanded(
-                  child: _loadingCalendar
-                      ? const Center(child: CircularProgressIndicator())
-                      : TableCalendar(
+              ),
+              Expanded(
+                flex: isNarrow ? 0 : 1,
+                child: _loadingCalendar
+                    ? const SizedBox(
+                        height: 400,
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    : SizedBox(
+                        height: isNarrow ? 400 : null,
+                        child: TableCalendar(
                           locale: 'ko_KR',
+                          sixWeekMonthsEnforced: true,
                           firstDay:
                               _currentSchedule?.startDate ?? DateTime(2020),
                           lastDay: _currentSchedule != null
@@ -268,7 +275,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                             return false;
                           },
                           enabledDayPredicate: (day) {
-                            // 1. Block future dates
                             final now = DateTime.now();
                             final bool isFuture =
                                 day.year > now.year ||
@@ -278,11 +284,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                                     day.month == now.month &&
                                     day.day > now.day);
                             if (isFuture) return false;
-
-                            // 2. Block Sundays
                             if (day.weekday == DateTime.sunday) return false;
-
-                            // 3. Block holidays
                             if (_currentSchedule == null) return true;
                             for (final holiday in _currentSchedule!.holidays) {
                               if ((day.isAfter(holiday.start) ||
@@ -418,7 +420,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                               return null;
                             },
                             disabledBuilder: (context, day, focusedDay) {
-                              // If it's a holiday, show gray circle even if disabled
                               ScheduleDateRange? holiday;
                               if (_currentSchedule != null) {
                                 for (final h in _currentSchedule!.holidays) {
@@ -431,7 +432,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                                   }
                                 }
                               }
-
                               if (holiday != null) {
                                 return Tooltip(
                                   message: holiday.description ?? "휴식 기간",
@@ -484,13 +484,27 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                                 ),
                               );
                             },
-                          ),
-                        ),
-                ),
+                          ), // end of CalendarBuilders
+                        ), // end of TableCalendar
+                      ), // end of SizedBox
+              ), // end of Expanded
+            ],
+          );
+
+          if (isNarrow) {
+            return SingleChildScrollView(
+              child: Column(children: [calendarPanel, profilePanel]),
+            );
+          } else {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                profilePanel,
+                Expanded(child: calendarPanel),
               ],
-            ),
-          ),
-        ],
+            );
+          }
+        },
       ),
     );
   }

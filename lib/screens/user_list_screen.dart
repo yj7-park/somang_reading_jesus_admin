@@ -46,6 +46,7 @@ class _UserListScreenState extends State<UserListScreen> {
         final List<ChurchRoster> roster = data['roster'];
         final Map<String, Map<String, dynamic>> userStats = data['stats'];
         final Set<String> todayCompletedUids = data['todayCompletedUids'] ?? {};
+        final int targetIndex = data['targetIndex'] ?? 270;
 
         // Merge Logic:
         final Set<String> registeredPhones = users
@@ -139,28 +140,46 @@ class _UserListScreenState extends State<UserListScreen> {
               // Summary stats
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  children: [
-                    _buildFilterChip(
-                      label: "전체: ${mergedList.length}",
-                      value: 'All',
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                      label: "가입: $registeredCount",
-                      value: 'Registered',
-                      activeColor: Colors.blue.withOpacity(0.1),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                      label: "미가입: $unregisteredCount",
-                      value: 'Unregistered',
-                      activeColor: Colors.orange.withOpacity(0.1),
-                    ),
-                    const Spacer(),
-                    // Today's Readers Pulse Filter
-                    _buildTodayFilterChip(navProvider),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final bool isNarrow = constraints.maxWidth < 400;
+                    final filters = [
+                      _buildFilterChip(
+                        label: "전체: ${mergedList.length}",
+                        value: 'All',
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        label: "가입: $registeredCount",
+                        value: 'Registered',
+                        activeColor: Colors.blue.withOpacity(0.1),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        label: "미가입: $unregisteredCount",
+                        value: 'Unregistered',
+                        activeColor: Colors.orange.withOpacity(0.1),
+                      ),
+                    ];
+
+                    final todayFilter = _buildTodayFilterChip(navProvider);
+
+                    if (isNarrow) {
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        alignment: WrapAlignment.start,
+                        children: [
+                          ...filters.where((w) => w is! SizedBox),
+                          todayFilter,
+                        ],
+                      );
+                    } else {
+                      return Row(
+                        children: [...filters, const Spacer(), todayFilter],
+                      );
+                    }
+                  },
                 ),
               ),
               const SizedBox(height: 8),
@@ -175,7 +194,7 @@ class _UserListScreenState extends State<UserListScreen> {
                     final stats = isRegistered ? userStats[item.uid] : null;
                     final completed =
                         stats?['total_days_completed'] as num? ?? 0;
-                    const totalDays = 270; // 45 weeks * 6 days
+                    final totalDays = targetIndex > 0 ? targetIndex : 1;
                     final progress = (completed / totalDays * 100)
                         .toStringAsFixed(1);
 
@@ -201,152 +220,124 @@ class _UserListScreenState extends State<UserListScreen> {
                             horizontal: 16,
                             vertical: 12,
                           ),
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: IntrinsicHeight(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  minWidth: 800, // Ensure enough space
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 18,
+                                backgroundColor: isRegistered
+                                    ? Colors.blue
+                                    : Colors.grey,
+                                child: Icon(
+                                  isRegistered
+                                      ? Icons.check
+                                      : Icons.person_outline,
+                                  color: Colors.white,
+                                  size: 16,
                                 ),
-                                child: Row(
+                              ),
+                              const SizedBox(width: 12),
+                              // Left Area: User Info (flex 1)
+                              Expanded(
+                                flex: 1,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    SizedBox(
-                                      width: 40,
-                                      child: CircleAvatar(
-                                        radius: 16,
-                                        backgroundColor: isRegistered
-                                            ? Colors.blue
-                                            : Colors.grey,
-                                        child: Icon(
-                                          isRegistered
-                                              ? Icons.check
-                                              : Icons.person_outline,
-                                          color: Colors.white,
-                                          size: 14,
+                                    Text(
+                                      isRegistered
+                                          ? item.name
+                                          : (item as ChurchRoster).name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Wrap(
+                                      spacing: 8,
+                                      children: [
+                                        Text(
+                                          FormatHelper.formatPhone(
+                                            isRegistered
+                                                ? item.phoneNumber
+                                                : (item as ChurchRoster)
+                                                      .phoneNumber,
+                                          ),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[700],
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Name + (Phone & Birthdate)
-                                    SizedBox(
-                                      width: 400,
-                                      child: Row(
-                                        children: [
-                                          // Column 1: Name
-                                          SizedBox(
-                                            width: 120,
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  isRegistered
-                                                      ? item.name
-                                                      : (item as ChurchRoster)
-                                                            .name,
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 16,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ],
-                                            ),
+                                        Text(
+                                          isRegistered
+                                              ? (item.birthDate ?? "")
+                                              : (item as ChurchRoster)
+                                                    .birthDate,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey[500],
                                           ),
-                                          const SizedBox(width: 40),
-                                          // Column 2: Phone + Birthdate
-                                          Expanded(
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  FormatHelper.formatPhone(
-                                                    isRegistered
-                                                        ? item.phoneNumber
-                                                        : (item as ChurchRoster)
-                                                              .phoneNumber,
-                                                  ),
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Text(
-                                                  isRegistered
-                                                      ? (item.birthDate ??
-                                                            "생년월일 미지정")
-                                                      : (item as ChurchRoster)
-                                                            .birthDate,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey[600],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
-                                    SizedBox(width: 40),
-                                    // Progress
-                                    SizedBox(
-                                      width: 300,
-                                      child: isRegistered
-                                          ? Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.end,
-                                              children: [
-                                                Text(
-                                                  "$completed / $totalDays ($progress%)",
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                SizedBox(
-                                                  width: 60,
-                                                  child:
-                                                      LinearProgressIndicator(
-                                                        value:
-                                                            completed /
-                                                            totalDays,
-                                                        backgroundColor:
-                                                            Colors.grey[200],
-                                                        color: Colors.green,
-                                                        minHeight: 6,
-                                                      ),
-                                                ),
-                                              ],
-                                            )
-                                          : const Text(
-                                              "미등록",
-                                              textAlign: TextAlign.right,
-                                              style: TextStyle(
-                                                color: Colors.orange,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                    ),
-                                    const SizedBox(width: 20),
-                                    const Icon(
-                                      Icons.chevron_right,
-                                      size: 16,
-                                      color: Colors.grey,
-                                    ),
-                                    const SizedBox(width: 16),
                                   ],
                                 ),
                               ),
-                            ),
+                              const SizedBox(width: 12),
+                              // Right Area: Progress Info (flex 1)
+                              Expanded(
+                                flex: 1,
+                                child: isRegistered
+                                    ? Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            "$completed/$totalDays ($progress%)",
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          SizedBox(
+                                            width: 100,
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                              child: LinearProgressIndicator(
+                                                value: completed / totalDays,
+                                                backgroundColor:
+                                                    Colors.grey[200],
+                                                color: Colors.green,
+                                                minHeight: 6,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : const Align(
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          "미등록",
+                                          style: TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.chevron_right,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                            ],
                           ),
                         ),
                       ),

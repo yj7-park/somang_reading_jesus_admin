@@ -119,3 +119,6 @@ app.*.symbols
 !/dev/ci/**/Gemfile.lock
 # Secrets
 secrets.json
+
+# IDE related
+.vscode/

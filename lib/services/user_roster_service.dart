@@ -91,8 +91,11 @@ class UserAndRosterService {
       int week = -1;
       int day = -1;
 
+      int targetIndex = 0;
+
       if (scheduleDoc.exists) {
         final schedule = ReadingSchedule.fromFirestore(scheduleDoc);
+        targetIndex = DateHelper.getReadingIndex(now, schedule) + 1;
         final pos = DateHelper.getReadingPosition(now, schedule);
         if (pos != null) {
           year = pos.year;
@@ -153,6 +156,7 @@ class UserAndRosterService {
             'roster': roster,
             'todayCompletedUids': todayCompletedUids,
             'stats': statsMap,
+            'targetIndex': targetIndex,
           };
         },
       );

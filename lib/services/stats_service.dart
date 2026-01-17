@@ -99,14 +99,14 @@ class StatsService {
     }
 
     Map<String, Map<String, int>> distribution = {
-      '10s': {'total': 0, 'completed': 0},
-      '20s': {'total': 0, 'completed': 0},
-      '30s': {'total': 0, 'completed': 0},
-      '40s': {'total': 0, 'completed': 0},
-      '50s': {'total': 0, 'completed': 0},
-      '60s': {'total': 0, 'completed': 0},
-      '70s+': {'total': 0, 'completed': 0},
-      'Unknown': {'total': 0, 'completed': 0},
+      '10대': {'total': 0, 'completed': 0},
+      '20대': {'total': 0, 'completed': 0},
+      '30대': {'total': 0, 'completed': 0},
+      '40대': {'total': 0, 'completed': 0},
+      '50대': {'total': 0, 'completed': 0},
+      '60대': {'total': 0, 'completed': 0},
+      '70대+': {'total': 0, 'completed': 0},
+      '미기재': {'total': 0, 'completed': 0},
     };
 
     for (var doc in usersSnap.docs) {
@@ -122,25 +122,25 @@ class StatsService {
             "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
       }
 
-      String ageGroup = 'Unknown';
+      String ageGroup = '미기재';
       if (dobStr != null && dobStr.length >= 4) {
         try {
           int birthYear = int.parse(dobStr.substring(0, 4));
           int age = now.year - birthYear;
           if (age >= 10 && age < 20)
-            ageGroup = '10s';
+            ageGroup = '10대';
           else if (age < 30)
-            ageGroup = '20s';
+            ageGroup = '20대';
           else if (age < 40)
-            ageGroup = '30s';
+            ageGroup = '30대';
           else if (age < 50)
-            ageGroup = '40s';
+            ageGroup = '40대';
           else if (age < 60)
-            ageGroup = '50s';
+            ageGroup = '50대';
           else if (age < 70)
-            ageGroup = '60s';
+            ageGroup = '60대';
           else if (age >= 70)
-            ageGroup = '70s+';
+            ageGroup = '70대+';
         } catch (_) {}
       }
 
@@ -262,14 +262,14 @@ class StatsService {
 
           // Age distribution (Reuse logic)
           Map<String, Map<String, int>> distribution = {
-            '10s': {'total': 0, 'completed': 0},
-            '20s': {'total': 0, 'completed': 0},
-            '30s': {'total': 0, 'completed': 0},
-            '40s': {'total': 0, 'completed': 0},
-            '50s': {'total': 0, 'completed': 0},
-            '60s': {'total': 0, 'completed': 0},
-            '70s+': {'total': 0, 'completed': 0},
-            'Unknown': {'total': 0, 'completed': 0},
+            '10대': {'total': 0, 'completed': 0},
+            '20대': {'total': 0, 'completed': 0},
+            '30대': {'total': 0, 'completed': 0},
+            '40대': {'total': 0, 'completed': 0},
+            '50대': {'total': 0, 'completed': 0},
+            '60대': {'total': 0, 'completed': 0},
+            '70대+': {'total': 0, 'completed': 0},
+            '미기재': {'total': 0, 'completed': 0},
           };
 
           for (var doc in usersSnap.docs) {
@@ -285,25 +285,25 @@ class StatsService {
                   "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
             }
 
-            String ageGroup = 'Unknown';
+            String ageGroup = '미기재';
             if (dobStr != null && dobStr.length >= 4) {
               try {
                 int birthYear = int.parse(dobStr.substring(0, 4));
                 int age = now.year - birthYear;
                 if (age >= 10 && age < 20)
-                  ageGroup = '10s';
+                  ageGroup = '10대';
                 else if (age < 30)
-                  ageGroup = '20s';
+                  ageGroup = '20대';
                 else if (age < 40)
-                  ageGroup = '30s';
+                  ageGroup = '30대';
                 else if (age < 50)
-                  ageGroup = '40s';
+                  ageGroup = '40대';
                 else if (age < 60)
-                  ageGroup = '50s';
+                  ageGroup = '50대';
                 else if (age < 70)
-                  ageGroup = '60s';
+                  ageGroup = '60대';
                 else if (age >= 70)
-                  ageGroup = '70s+';
+                  ageGroup = '70대+';
               } catch (_) {}
             }
 
