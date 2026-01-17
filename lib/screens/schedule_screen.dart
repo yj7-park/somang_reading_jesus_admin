@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/reading_schedule.dart';
 import '../services/schedule_service.dart';
-import '../services/auth_service.dart';
 import '../widgets/one_ui_app_bar.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -70,16 +69,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverOneUIAppBar(
-            title: '통독 일정 관리',
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.logout, color: Colors.black87),
-                tooltip: '로그아웃',
-                onPressed: () => AuthService().signOut(),
-              ),
-            ],
-          ),
+          SliverOneUIAppBar(title: '통독 일정 관리'),
           StreamBuilder<ReadingSchedule?>(
             stream: _scheduleStream,
             builder: (context, snapshot) {

@@ -5,8 +5,8 @@ import 'user_list_screen.dart';
 import 'schedule_screen.dart';
 import 'content_screen.dart';
 import 'notice_screen.dart';
-import '../services/auth_service.dart';
 import '../providers/navigation_provider.dart';
+import '../widgets/admin_profile_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -109,12 +109,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Align(
                   alignment: Alignment.bottomCenter,
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 20.0),
-                    child: IconButton(
-                      icon: const Icon(Icons.logout),
-                      onPressed: () => AuthService().signOut(),
-                      tooltip: '로그아웃',
-                    ),
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: const AdminProfileButton(showLabel: true),
                   ),
                 ),
               ),

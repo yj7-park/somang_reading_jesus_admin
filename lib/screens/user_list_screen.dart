@@ -163,14 +163,14 @@ class _UserListScreenState extends State<UserListScreen> {
                                     ? Colors.blue.withOpacity(0.5)
                                     : Colors.transparent,
                               ),
-                              boxShadow: [
-                                if (_isSearchExpanded)
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                              ],
+                              // boxShadow: [
+                              //   if (_isSearchExpanded)
+                              //     BoxShadow(
+                              //       color: Colors.black.withOpacity(0.05),
+                              //       blurRadius: 4,
+                              //       offset: const Offset(0, 2),
+                              //     ),
+                              // ],
                             ),
                             child: Row(
                               children: [
