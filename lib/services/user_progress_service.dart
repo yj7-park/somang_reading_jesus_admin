@@ -326,6 +326,8 @@ class UserProgressService {
     DateTime current = date.subtract(const Duration(days: 1));
     final startDate = schedule.startDate;
 
+    if (startDate == null) return null;
+
     // Go back up to 7 days to find the previous reading day
     for (int i = 0; i < 7; i++) {
       if (current.isBefore(startDate)) return null;

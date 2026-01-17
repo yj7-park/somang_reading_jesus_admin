@@ -17,6 +17,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   final ScheduleService _service = ScheduleService();
   String _selectedYear = DateTime.now().year.toString();
   List<String> _availableYears = [];
+  late Stream<ReadingSchedule?> _scheduleStream;
+  bool _isYearSelectorExpanded = false;
 
   @override
   void initState() {
@@ -25,41 +27,42 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   void _loadYears() async {
-    final years = await _service.getAvailableYears();
-    if (years.isNotEmpty) {
-      if (mounted) {
-        setState(() {
-          _availableYears = years;
-          if (!_availableYears.contains(_selectedYear)) {
-            _selectedYear = _availableYears.first;
-          }
-        });
-      }
-    } else {
-      if (mounted) {
-        setState(() {
-          _availableYears = [_selectedYear];
-        });
-      }
+    final yearsFromDb = await _service.getAvailableYears();
+    final currentYear = DateTime.now().year;
+    final nextYear = currentYear + 1;
+
+    final Set<String> yearSet = Set.from(yearsFromDb);
+    yearSet.add(currentYear.toString());
+    yearSet.add(nextYear.toString());
+
+    final sortedYears = yearSet.toList()..sort();
+
+    if (mounted) {
+      setState(() {
+        _availableYears = sortedYears;
+        if (!_availableYears.contains(_selectedYear)) {
+          _selectedYear = currentYear.toString();
+        }
+        _scheduleStream = _service.getScheduleStream(_selectedYear);
+      });
     }
   }
 
-  void _createNewYear() async {
-    // Logic to create a new year doc
-    // For now just add next year to list locally and let save create it
-    final nextYear = (int.parse(_availableYears.last) + 1).toString();
-    setState(() {
-      _availableYears.add(nextYear);
-      _selectedYear = nextYear;
-    });
-    // Actually save basic structure
-    await _service.saveSchedule(
-      ReadingSchedule(
-        year: nextYear,
-        startDate: DateTime(int.parse(nextYear), 1, 1),
-        holidays: [],
-      ),
-    );
+  void _onYearSelected(String year) async {
+    final schedule = await _service.getScheduleStream(year).first;
+
+    if (schedule == null) {
+      // Create default schedule without startDate
+      await _service.saveSchedule(ReadingSchedule(year: year, holidays: []));
+    }
+
+    if (mounted) {
+      setState(() {
+        _selectedYear = year;
+        _scheduleStream = _service.getScheduleStream(year);
+        _isYearSelectorExpanded = false;
+      });
+    }
   }
 
   @override
@@ -71,201 +74,256 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             title: '통독 일정 관리',
             actions: [
               IconButton(
-                icon: const Icon(Icons.add, color: Colors.black87),
-                tooltip: '새 연도 추가',
-                onPressed: _createNewYear,
-              ),
-              IconButton(
                 icon: const Icon(Icons.logout, color: Colors.black87),
                 tooltip: '로그아웃',
                 onPressed: () => AuthService().signOut(),
               ),
             ],
           ),
-          SliverFillRemaining(
-            hasScrollBody: true,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final bool isNarrow = constraints.maxWidth < 600;
-
-                final detailPanel = StreamBuilder<ReadingSchedule?>(
-                  stream: _service.getScheduleStream(_selectedYear),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-                    if (!snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final schedule = snapshot.data;
-                    if (schedule == null) {
-                      return const Center(child: Text('No Data'));
-                    }
-
-                    return _buildScheduleDetail(schedule);
-                  },
+          StreamBuilder<ReadingSchedule?>(
+            stream: _scheduleStream,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return SliverFillRemaining(
+                  child: Center(child: Text('Error: ${snapshot.error}')),
                 );
+              }
+              if (!snapshot.hasData) {
+                return const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
 
-                if (isNarrow) {
-                  return Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedYear,
-                          decoration: const InputDecoration(
-                            labelText: '연도 선택',
-                            border: OutlineInputBorder(),
+              final schedule = snapshot.data;
+              if (schedule == null) {
+                return const SliverFillRemaining(
+                  child: Center(child: Text('No Data')),
+                );
+              }
+
+              return SliverList(
+                delegate: SliverChildListDelegate([
+                  // Animated Year Selector (Right Aligned)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 8.0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          width: _isYearSelectorExpanded
+                              ? (MediaQuery.of(context).size.width > 600
+                                    ? 400
+                                    : MediaQuery.of(context).size.width - 32)
+                              : 120,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: _isYearSelectorExpanded
+                                  ? Colors.blue.withOpacity(0.5)
+                                  : Colors.transparent,
+                            ),
                           ),
-                          items: _availableYears
-                              .map(
-                                (year) => DropdownMenuItem(
-                                  value: year,
-                                  child: Text('$year년'),
+                          child: Row(
+                            children: [
+                              if (_isYearSelectorExpanded)
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0,
+                                    ),
+                                    child: Row(
+                                      children: _availableYears.map((year) {
+                                        final isSelected =
+                                            _selectedYear == year;
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4.0,
+                                          ),
+                                          child: ChoiceChip(
+                                            label: Text('$year년'),
+                                            selected: isSelected,
+                                            onSelected: (selected) {
+                                              if (selected) {
+                                                _onYearSelected(year);
+                                              }
+                                            },
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
                                 ),
-                              )
-                              .toList(),
-                          onChanged: (v) {
-                            if (v != null) setState(() => _selectedYear = v);
-                          },
-                        ),
-                      ),
-                      Expanded(child: detailPanel),
-                    ],
-                  );
-                } else {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Left Panel: Year Selector
-                      Container(
-                        width: 200,
-                        decoration: BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Colors.grey.shade300),
+                              if (!_isYearSelectorExpanded)
+                                Expanded(
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(24),
+                                    onTap: () {
+                                      setState(() {
+                                        _isYearSelectorExpanded = true;
+                                      });
+                                    },
+                                    child: Center(
+                                      child: Text(
+                                        '$_selectedYear년',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (_isYearSelectorExpanded)
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isYearSelectorExpanded = false;
+                                    });
+                                  },
+                                ),
+                            ],
                           ),
                         ),
-                        child: ListView(
-                          children: _availableYears
-                              .map(
-                                (year) => ListTile(
-                                  title: Text('$year년'),
-                                  selected: _selectedYear == year,
-                                  onTap: () =>
-                                      setState(() => _selectedYear = year),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                      // Right Panel: Schedule Detail
-                      Expanded(child: detailPanel),
-                    ],
-                  );
-                }
-              },
-            ),
+                      ],
+                    ),
+                  ),
+
+                  // Detail Content
+                  _buildScheduleDetail(schedule),
+                ]),
+              );
+            },
           ),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
         ],
       ),
     );
   }
 
   Widget _buildScheduleDetail(ReadingSchedule schedule) {
-    return ListView(
+    return Padding(
       padding: const EdgeInsets.all(24.0),
-      children: [
-        // Start Date Section
-        Card(
-          child: ListTile(
-            title: const Text('통독 시작일'),
-            subtitle: Text(
-              DateFormat('yyyy-MM-dd (E)', 'ko_KR').format(schedule.startDate),
-            ),
-            trailing: IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () =>
-                  _pickDate(context, schedule.startDate, (date) async {
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Start Date Section
+          Card(
+            child: ListTile(
+              title: const Text('통독 시작일'),
+              subtitle: schedule.startDate != null
+                  ? Text(
+                      DateFormat(
+                        'yyyy-MM-dd (E)',
+                        'ko_KR',
+                      ).format(schedule.startDate!),
+                    )
+                  : const Text(
+                      '등록 정보 없음',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+              trailing: IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () => _pickDate(
+                  context,
+                  schedule.startDate ??
+                      DateTime(int.parse(schedule.year), 1, 1),
+                  (date) async {
                     final newSchedule = ReadingSchedule(
                       year: schedule.year,
                       startDate: date,
                       holidays: schedule.holidays,
                     );
                     await _service.saveSchedule(newSchedule);
-                  }),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // Holidays Section
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('휴식 기간 설정', style: Theme.of(context).textTheme.headlineSmall),
-            FilledButton.icon(
-              onPressed: () => _addHolidayDialog(schedule),
-              icon: const Icon(Icons.add),
-              label: const Text('휴식 기간 추가'),
-            ),
-          ],
-        ),
-        const Divider(),
-        if (schedule.holidays.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(20),
-            child: Text("설정된 휴식 기간이 없습니다."),
-          ),
-
-        ...([]
-              ..addAll(schedule.holidays)
-              ..sort((a, b) => a.start.compareTo(b.start)))
-            .asMap()
-            .entries
-            .map((entry) {
-              final range = entry.value;
-              final idx = schedule.holidays.indexOf(
-                range,
-              ); // Use real index for deletion
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: const Icon(Icons.beach_access),
-                  title: Text(
-                    '${DateFormat('yyyy-MM-dd (E)', 'ko_KR').format(range.start)} ~ ${DateFormat('yyyy-MM-dd (E)', 'ko_KR').format(range.end)}',
-                  ),
-                  subtitle:
-                      range.description != null && range.description!.isNotEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Text(
-                            range.description!,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        )
-                      : null,
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () async {
-                      // Remove item
-                      final newHolidays = List<ScheduleDateRange>.from(
-                        schedule.holidays,
-                      );
-                      newHolidays.removeAt(idx);
-                      await _service.saveSchedule(
-                        ReadingSchedule(
-                          year: schedule.year,
-                          startDate: schedule.startDate,
-                          holidays: newHolidays,
-                        ),
-                      );
-                    },
-                  ),
+                  },
                 ),
-              );
-            }),
-      ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Holidays Section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '휴식 기간 설정',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              FilledButton.icon(
+                onPressed: () => _addHolidayDialog(schedule),
+                icon: const Icon(Icons.add),
+                label: const Text('휴식 기간 추가'),
+              ),
+            ],
+          ),
+          const Divider(),
+          if (schedule.holidays.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Text("설정된 휴식 기간이 없습니다."),
+            ),
+
+          ...([]
+                ..addAll(schedule.holidays)
+                ..sort((a, b) => a.start.compareTo(b.start)))
+              .asMap()
+              .entries
+              .map((entry) {
+                final range = entry.value;
+                final idx = schedule.holidays.indexOf(
+                  range,
+                ); // Use real index for deletion
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const Icon(Icons.beach_access),
+                    title: Text(
+                      '${DateFormat('yyyy-MM-dd (E)', 'ko_KR').format(range.start)} ~ ${DateFormat('yyyy-MM-dd (E)', 'ko_KR').format(range.end)}',
+                    ),
+                    subtitle:
+                        range.description != null &&
+                            range.description!.isNotEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Text(
+                              range.description!,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : null,
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () async {
+                        // Remove item
+                        final newHolidays = List<ScheduleDateRange>.from(
+                          schedule.holidays,
+                        );
+                        newHolidays.removeAt(idx);
+                        await _service.saveSchedule(
+                          ReadingSchedule(
+                            year: schedule.year,
+                            startDate: schedule.startDate,
+                            holidays: newHolidays,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              })
+              .toList(),
+        ],
+      ),
     );
   }
 

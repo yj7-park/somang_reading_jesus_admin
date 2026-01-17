@@ -28,7 +28,8 @@ class DateHelper {
 
   /// Calculate the current reading index (0-based) based on the schedule, skipping weekends and holidays.
   static int getReadingIndex(DateTime targetDate, ReadingSchedule schedule) {
-    DateTime startDate = schedule.startDate;
+    if (schedule.startDate == null) return -1;
+    DateTime startDate = schedule.startDate!;
     if (targetDate.isBefore(startDate)) return -1;
 
     int readingDays = 0;
@@ -72,7 +73,9 @@ class DateHelper {
   /// Calculate the end date of the 270-day reading plan.
   static DateTime getEndDate(ReadingSchedule schedule) {
     int readingDays = 0;
-    DateTime current = schedule.startDate;
+    DateTime current =
+        schedule.startDate ??
+        DateTime(int.tryParse(schedule.year) ?? DateTime.now().year, 1, 1);
 
     while (readingDays < 270) {
       bool isReadingDay =
@@ -98,7 +101,10 @@ class DateHelper {
       }
       current = current.add(const Duration(days: 1));
       // Safety break to prevent infinite loop
-      if (current.year > (schedule.startDate.year + 2)) break;
+      final startYear =
+          schedule.startDate?.year ??
+          (int.tryParse(schedule.year) ?? current.year);
+      if (current.year > (startYear + 2)) break;
     }
 
     return current;

@@ -45,9 +45,10 @@ class _UserListScreenState extends State<UserListScreen> {
       stream: _dataStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
+          debugPrint(snapshot.error.toString());
           return Scaffold(
             appBar: AppBar(title: const Text('사용자 관리')),
-            body: Center(child: Text("오류가 발생했습니다: ${snapshot.error}")),
+            body: Center(child: Text("오류가 발생했습니다")),
           );
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -155,7 +156,7 @@ class _UserListScreenState extends State<UserListScreen> {
                                 : 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: Colors.grey[100],
+                              color: Colors.transparent,
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
                                 color: _isSearchExpanded

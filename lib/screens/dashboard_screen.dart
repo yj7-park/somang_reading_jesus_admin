@@ -30,7 +30,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         stream: _dataStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text("오류가 발생했습니다: ${snapshot.error}"));
+            debugPrint(snapshot.error.toString());
+            return Scaffold(
+              appBar: AppBar(title: const Text('사용자 관리')),
+              body: Center(child: Text("오류가 발생했습니다")),
+            );
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

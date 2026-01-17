@@ -2,14 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ReadingSchedule {
   final String year;
-  final DateTime startDate;
+  final DateTime? startDate;
   final List<ScheduleDateRange> holidays;
 
-  ReadingSchedule({
-    required this.year,
-    required this.startDate,
-    required this.holidays,
-  });
+  ReadingSchedule({required this.year, this.startDate, required this.holidays});
 
   factory ReadingSchedule.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
@@ -54,16 +50,14 @@ class ReadingSchedule {
 
     return ReadingSchedule(
       year: doc.id,
-      startDate:
-          startDate ??
-          DateTime(int.tryParse(doc.id) ?? DateTime.now().year, 1, 1),
+      startDate: startDate,
       holidays: parsedHolidays,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'startDate': Timestamp.fromDate(startDate),
+      'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
       'holidays': holidays
           .map(
             (range) => {
