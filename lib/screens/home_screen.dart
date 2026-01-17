@@ -129,9 +129,14 @@ class _HomeScreenState extends State<HomeScreen> {
             const VerticalDivider(thickness: 1, width: 1),
           ],
           Expanded(
-            child: IndexedStack(
-              index: navProvider.selectedIndex,
-              children: _screens,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1000),
+                child: IndexedStack(
+                  index: navProvider.selectedIndex,
+                  children: _screens,
+                ),
+              ),
             ),
           ),
         ],
