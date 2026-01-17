@@ -55,6 +55,7 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   msix: ^3.16.2
+  flutter_launcher_icons: ^0.13.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -108,3 +109,15 @@ msix_config:
   msix_version: 1.2.0.0
   logo_path: assets/icon/official_icon.png
   capabilities: internetClient
+
+flutter_launcher_icons:
+  image_path: "assets/icon/official_icon_transparent.png"
+  web:
+    generate: true
+    image_path: "assets/icon/official_icon_transparent.png"
+    background_color: "#ffffff"
+    theme_color: "#ffffff"
+  windows:
+    generate: true
+    image_path: "assets/icon/official_icon_transparent.png"
+    icon_size: 256

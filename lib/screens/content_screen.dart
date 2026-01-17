@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/content.dart';
 import '../services/content_service.dart';
+import '../widgets/one_ui_app_bar.dart';
 
 class ContentScreen extends StatefulWidget {
   const ContentScreen({super.key});
@@ -11,13 +12,19 @@ class ContentScreen extends StatefulWidget {
 
 class _ContentScreenState extends State<ContentScreen> {
   final ContentService _service = ContentService();
+  late final Stream<List<Content>> _contentStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _contentStream = _service.getContentStream();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('컨텐츠 관리')),
       body: StreamBuilder<List<Content>>(
-        stream: _service.getContentStream(),
+        stream: _contentStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -28,66 +35,84 @@ class _ContentScreenState extends State<ContentScreen> {
 
           final contents = snapshot.data!;
           if (contents.isEmpty) {
-            return const Center(child: Text("등록된 컨텐츠가 없습니다."));
+            return CustomScrollView(
+              slivers: [
+                const SliverOneUIAppBar(title: '컨텐츠 관리'),
+                const SliverFillRemaining(
+                  child: Center(child: Text("등록된 컨텐츠가 없습니다.")),
+                ),
+              ],
+            );
           }
 
-          return ReorderableListView.builder(
-            itemCount: contents.length,
-            onReorder: (oldIndex, newIndex) {
-              // Optional: Implement reorder logic updating 'order' field in batch
-            },
-            itemBuilder: (context, index) {
-              final content = contents[index];
-              return Card(
-                key: ValueKey(content.id),
-                child: ListTile(
-                  leading: Icon(
-                    content.type == ContentType.youtube
-                        ? Icons.play_circle_fill
-                        : Icons.image,
-                    color: content.type == ContentType.youtube
-                        ? Colors.red
-                        : Colors.green,
-                    size: 40,
-                  ),
-                  title: Text(content.title),
-                  subtitle: Text(
-                    content.url,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Switch(
-                        value: content.isVisible,
-                        onChanged: (val) {
-                          _service.updateContent(
-                            Content(
-                              id: content.id,
-                              type: content.type,
-                              title: content.title,
-                              url: content.url,
-                              isVisible: val, // Update visibility
-                              order: content.order,
-                              createdAt: content.createdAt,
-                            ),
-                          );
-                        },
+          return CustomScrollView(
+            slivers: [
+              const SliverOneUIAppBar(title: '컨텐츠 관리'),
+              SliverReorderableList(
+                itemCount: contents.length,
+                onReorder: (oldIndex, newIndex) {
+                  // Optional: Implement reorder logic updating 'order' field in batch
+                },
+                itemBuilder: (context, index) {
+                  final content = contents[index];
+                  return Card(
+                    key: ValueKey(content.id),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
+                    child: ListTile(
+                      leading: Icon(
+                        content.type == ContentType.youtube
+                            ? Icons.play_circle_fill
+                            : Icons.image,
+                        color: content.type == ContentType.youtube
+                            ? Colors.red
+                            : Colors.green,
+                        size: 40,
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _showDialog(context, content: content),
+                      title: Text(content.title),
+                      subtitle: Text(
+                        content.url,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.grey),
-                        onPressed: () => _confirmDelete(content.id),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Switch(
+                            value: content.isVisible,
+                            onChanged: (val) {
+                              _service.updateContent(
+                                Content(
+                                  id: content.id,
+                                  type: content.type,
+                                  title: content.title,
+                                  url: content.url,
+                                  isVisible: val,
+                                  order: content.order,
+                                  createdAt: content.createdAt,
+                                ),
+                              );
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () =>
+                                _showDialog(context, content: content),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.grey),
+                            onPressed: () => _confirmDelete(content.id),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              );
-            },
+                    ),
+                  );
+                },
+              ),
+              const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+            ],
           );
         },
       ),

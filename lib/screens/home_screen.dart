@@ -31,9 +31,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final destinations = const [
       NavigationRailDestination(
-        icon: Icon(Icons.dashboard_outlined),
-        selectedIcon: Icon(Icons.dashboard),
-        label: Text('대시보드'),
+        icon: Icon(Icons.home_outlined),
+        selectedIcon: Icon(Icons.home),
+        label: Text('홈'),
       ),
       NavigationRailDestination(
         icon: Icon(Icons.people_outlined),
@@ -59,9 +59,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final bottomDestinations = const [
       BottomNavigationBarItem(
-        icon: Icon(Icons.dashboard_outlined),
-        activeIcon: Icon(Icons.dashboard),
-        label: '대시보드',
+        icon: Icon(Icons.home_outlined),
+        activeIcon: Icon(Icons.home),
+        label: '홈',
       ),
       BottomNavigationBarItem(
         icon: Icon(Icons.people_outlined),
@@ -86,18 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
 
     return Scaffold(
-      appBar: isMobile
-          ? AppBar(
-              title: const Text('리딩지저스 관리자', style: TextStyle(fontSize: 18)),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.logout),
-                  onPressed: () => AuthService().signOut(),
-                  tooltip: '로그아웃',
-                ),
-              ],
-            )
-          : null,
+      appBar: null,
       body: Row(
         children: [
           if (!isMobile) ...[
@@ -107,9 +96,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 navProvider.setIndex(index);
               },
               labelType: NavigationRailLabelType.all,
-              leading: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20.0),
-                child: Icon(Icons.menu_book, size: 32),
+              leading: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 30.0),
+                child: Image.asset(
+                  'assets/icon/official_icon_transparent.png',
+                  width: 80,
+                  height: 80,
+                ),
               ),
               destinations: destinations,
               trailing: Expanded(

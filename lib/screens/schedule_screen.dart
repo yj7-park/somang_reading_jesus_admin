@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/reading_schedule.dart';
 import '../services/schedule_service.dart';
+import '../services/auth_service.dart';
+import '../widgets/one_ui_app_bar.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -63,97 +65,109 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('통독 일정 관리'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: '새 연도 추가',
-            onPressed: _createNewYear,
+      body: CustomScrollView(
+        slivers: [
+          SliverOneUIAppBar(
+            title: '통독 일정 관리',
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.add, color: Colors.black87),
+                tooltip: '새 연도 추가',
+                onPressed: _createNewYear,
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.black87),
+                tooltip: '로그아웃',
+                onPressed: () => AuthService().signOut(),
+              ),
+            ],
+          ),
+          SliverFillRemaining(
+            hasScrollBody: true,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final bool isNarrow = constraints.maxWidth < 600;
+
+                final detailPanel = StreamBuilder<ReadingSchedule?>(
+                  stream: _service.getScheduleStream(_selectedYear),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final schedule = snapshot.data;
+                    if (schedule == null) {
+                      return const Center(child: Text('No Data'));
+                    }
+
+                    return _buildScheduleDetail(schedule);
+                  },
+                );
+
+                if (isNarrow) {
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedYear,
+                          decoration: const InputDecoration(
+                            labelText: '연도 선택',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _availableYears
+                              .map(
+                                (year) => DropdownMenuItem(
+                                  value: year,
+                                  child: Text('$year년'),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) setState(() => _selectedYear = v);
+                          },
+                        ),
+                      ),
+                      Expanded(child: detailPanel),
+                    ],
+                  );
+                } else {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Left Panel: Year Selector
+                      Container(
+                        width: 200,
+                        decoration: BoxDecoration(
+                          border: Border(
+                            right: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: ListView(
+                          children: _availableYears
+                              .map(
+                                (year) => ListTile(
+                                  title: Text('$year년'),
+                                  selected: _selectedYear == year,
+                                  onTap: () =>
+                                      setState(() => _selectedYear = year),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                      // Right Panel: Schedule Detail
+                      Expanded(child: detailPanel),
+                    ],
+                  );
+                }
+              },
+            ),
           ),
         ],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool isNarrow = constraints.maxWidth < 600;
-
-          final detailPanel = StreamBuilder<ReadingSchedule?>(
-            stream: _service.getScheduleStream(_selectedYear),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-              }
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final schedule = snapshot.data;
-              if (schedule == null) {
-                return const Center(child: Text('No Data'));
-              }
-
-              return _buildScheduleDetail(schedule);
-            },
-          );
-
-          if (isNarrow) {
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedYear,
-                    decoration: const InputDecoration(
-                      labelText: '연도 선택',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _availableYears
-                        .map(
-                          (year) => DropdownMenuItem(
-                            value: year,
-                            child: Text('$year년'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) setState(() => _selectedYear = v);
-                    },
-                  ),
-                ),
-                Expanded(child: detailPanel),
-              ],
-            );
-          } else {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left Panel: Year Selector
-                Container(
-                  width: 200,
-                  decoration: BoxDecoration(
-                    border: Border(
-                      right: BorderSide(color: Colors.grey.shade300),
-                    ),
-                  ),
-                  child: ListView(
-                    children: _availableYears
-                        .map(
-                          (year) => ListTile(
-                            title: Text('$year년'),
-                            selected: year == _selectedYear,
-                            onTap: () => setState(() => _selectedYear = year),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-
-                // Right Panel: Details
-                Expanded(child: detailPanel),
-              ],
-            );
-          }
-        },
       ),
     );
   }

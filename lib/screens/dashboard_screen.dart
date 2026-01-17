@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/stats_service.dart';
+import '../widgets/one_ui_app_bar.dart';
 import '../providers/navigation_provider.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -12,15 +13,21 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final StatsService _service = StatsService();
+  late final Stream<Map<String, dynamic>> _dataStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataStream = _service.getStatsStream();
+  }
 
   @override
   Widget build(BuildContext context) {
     final navProvider = context.read<NavigationProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('대시보드')),
       body: StreamBuilder<Map<String, dynamic>>(
-        stream: _service.getStatsStream(),
+        stream: _dataStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text("오류가 발생했습니다: ${snapshot.error}"));
@@ -35,91 +42,112 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final avgProgressPercent = data['avgProgressPercent'] as double;
           final ageStats = data['ageStats'] as Map<String, Map<String, int>>;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "현황 요약",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-
-                // Summary Cards Row
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    int crossAxisCount = constraints.maxWidth > 800 ? 3 : 1;
-                    return GridView.count(
-                      crossAxisCount: crossAxisCount,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: 2.5,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      children: [
-                        _buildStatCard(
-                          title: "총 등록 사용자",
-                          value: "$totalUsers명",
-                          icon: Icons.group,
-                          color: Colors.blue,
-                          onTap: () {
-                            navProvider.setIndex(1);
-                            navProvider.setShowOnlyTodayReaders(false);
-                          },
+          return CustomScrollView(
+            slivers: [
+              const SliverOneUIAppBar(title: '통독 현황'),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "현황 요약",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                        _buildStatCard(
-                          title: "오늘 통독자",
-                          value: "$todayReaders명",
-                          subtitle: totalUsers > 0
-                              ? "${((todayReaders / totalUsers) * 100).toStringAsFixed(1)}%"
-                              : "0%",
-                          icon: Icons.menu_book,
-                          color: Colors.green,
-                          onTap: () {
-                            navProvider.navigateToUserListWithTodayFilter();
-                          },
-                        ),
-                        _buildStatCard(
-                          title: "평균 진행률",
-                          value: "${avgProgressPercent.toStringAsFixed(1)}%",
-                          subtitle: "오늘 진도 대비 평균",
-                          icon: Icons.trending_up,
-                          color: Colors.orange,
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                      ),
+                      const SizedBox(height: 16),
+                      // ... (rest of children below)
 
-                const SizedBox(height: 32),
-                const Text(
-                  "사용자 현황 및 진행률",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
+                      // Summary Cards Row
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          int crossAxisCount = constraints.maxWidth > 800
+                              ? 3
+                              : 1;
+                          return GridView.count(
+                            crossAxisCount: crossAxisCount,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            childAspectRatio: 2.5,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            children: [
+                              _buildStatCard(
+                                title: "총 등록 사용자",
+                                value: "$totalUsers명",
+                                icon: Icons.group,
+                                color: Colors.blue,
+                                onTap: () {
+                                  navProvider.setIndex(1);
+                                  navProvider.setShowOnlyTodayReaders(false);
+                                },
+                              ),
+                              _buildStatCard(
+                                title: "오늘 통독자",
+                                value: "$todayReaders명",
+                                subtitle: totalUsers > 0
+                                    ? "${((todayReaders / totalUsers) * 100).toStringAsFixed(1)}%"
+                                    : "0%",
+                                icon: Icons.menu_book,
+                                color: Colors.green,
+                                onTap: () {
+                                  navProvider
+                                      .navigateToUserListWithTodayFilter();
+                                },
+                              ),
+                              _buildStatCard(
+                                title: "평균 진행률",
+                                value:
+                                    "${avgProgressPercent.toStringAsFixed(1)}%",
+                                subtitle: "오늘 진도 대비 평균",
+                                icon: Icons.trending_up,
+                                color: Colors.orange,
+                              ),
+                            ],
+                          );
+                        },
+                      ),
 
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "연령대별 통독 현황",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                      const SizedBox(height: 32),
+                      const Text(
+                        "사용자 현황 및 진행률",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "연령대별 통독 현황",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: 200,
+                                child: _buildAgeChart(ageStats),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        SizedBox(height: 200, child: _buildAgeChart(ageStats)),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),

@@ -4,6 +4,7 @@ import '../models/user_profile.dart';
 import '../models/church_roster.dart';
 import '../services/user_roster_service.dart';
 import '../utils/format_helper.dart';
+import '../widgets/one_ui_app_bar.dart';
 import '../providers/navigation_provider.dart';
 import 'package:provider/provider.dart';
 import 'user_detail_screen.dart';
@@ -18,15 +19,30 @@ class UserListScreen extends StatefulWidget {
 class _UserListScreenState extends State<UserListScreen> {
   final UserAndRosterService _service = UserAndRosterService();
   final TextEditingController _searchController = TextEditingController();
-
+  bool _isSearchExpanded = false;
+  final FocusNode _searchFocusNode = FocusNode();
   String _filterStatus = 'All'; // All, Registered, Unregistered
+  late final Stream<Map<String, dynamic>> _dataStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataStream = _service.getCombinedUserRosterStream();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final navProvider = context.watch<NavigationProvider>();
 
     return StreamBuilder<Map<String, dynamic>>(
-      stream: _service.getCombinedUserRosterStream(),
+      stream: _dataStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return Scaffold(
@@ -114,237 +130,304 @@ class _UserListScreenState extends State<UserListScreen> {
         int unregisteredCount = mergedList.length - registeredCount;
 
         return Scaffold(
-          appBar: AppBar(title: const Text('사용자 관리')),
-          body: Column(
-            children: [
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
+          body: CustomScrollView(
+            slivers: [
+              const SliverOneUIAppBar(title: '사용자 관리'),
+              SliverToBoxAdapter(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: const InputDecoration(
-                          labelText: '검색 (이름 / 전화번호)',
-                          prefixIcon: Icon(Icons.search),
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (v) => setState(() {}),
+                    // Animated Search Bar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 8.0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            width: _isSearchExpanded
+                                ? (MediaQuery.of(context).size.width > 600
+                                      ? 400
+                                      : MediaQuery.of(context).size.width - 32)
+                                : 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: _isSearchExpanded
+                                    ? Colors.blue.withOpacity(0.5)
+                                    : Colors.transparent,
+                              ),
+                              boxShadow: [
+                                if (_isSearchExpanded)
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                if (_isSearchExpanded)
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 16.0,
+                                      ),
+                                      child: TextField(
+                                        controller: _searchController,
+                                        focusNode: _searchFocusNode,
+                                        decoration: const InputDecoration(
+                                          hintText: '이름 / 전화번호 검색',
+                                          border: InputBorder.none,
+                                          isDense: true,
+                                        ),
+                                        onChanged: (v) => setState(() {}),
+                                      ),
+                                    ),
+                                  ),
+                                IconButton(
+                                  icon: Icon(
+                                    _isSearchExpanded
+                                        ? Icons.close
+                                        : Icons.search,
+                                    color: Colors.black87,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isSearchExpanded = !_isSearchExpanded;
+                                      if (_isSearchExpanded) {
+                                        _searchFocusNode.requestFocus();
+                                      } else {
+                                        _searchController.clear();
+                                        _searchFocusNode.unfocus();
+                                      }
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+
+                    // Summary stats
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final bool isNarrow = constraints.maxWidth < 400;
+                          final filters = [
+                            _buildFilterChip(
+                              label: "전체: ${mergedList.length}",
+                              value: 'All',
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                              label: "가입: $registeredCount",
+                              value: 'Registered',
+                              activeColor: Colors.blue.withOpacity(0.1),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                              label: "미가입: $unregisteredCount",
+                              value: 'Unregistered',
+                              activeColor: Colors.orange.withOpacity(0.1),
+                            ),
+                          ];
+
+                          final todayFilter = _buildTodayFilterChip(
+                            navProvider,
+                          );
+
+                          if (isNarrow) {
+                            return Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              alignment: WrapAlignment.start,
+                              children: [
+                                ...filters.where((w) => w is! SizedBox),
+                                todayFilter,
+                              ],
+                            );
+                          } else {
+                            return Row(
+                              children: [
+                                ...filters,
+                                const Spacer(),
+                                todayFilter,
+                              ],
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
+              SliverList(
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final item = filteredList[index];
+                  final isRegistered = item is UserProfile;
 
-              // Summary stats
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final bool isNarrow = constraints.maxWidth < 400;
-                    final filters = [
-                      _buildFilterChip(
-                        label: "전체: ${mergedList.length}",
-                        value: 'All',
-                      ),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(
-                        label: "가입: $registeredCount",
-                        value: 'Registered',
-                        activeColor: Colors.blue.withOpacity(0.1),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(
-                        label: "미가입: $unregisteredCount",
-                        value: 'Unregistered',
-                        activeColor: Colors.orange.withOpacity(0.1),
-                      ),
-                    ];
+                  final stats = isRegistered ? userStats[item.uid] : null;
+                  final completed = stats?['total_days_completed'] as num? ?? 0;
+                  final totalDays = targetIndex > 0 ? targetIndex : 1;
+                  final progress = (completed / totalDays * 100)
+                      .toStringAsFixed(1);
 
-                    final todayFilter = _buildTodayFilterChip(navProvider);
-
-                    if (isNarrow) {
-                      return Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        alignment: WrapAlignment.start,
-                        children: [
-                          ...filters.where((w) => w is! SizedBox),
-                          todayFilter,
-                        ],
-                      );
-                    } else {
-                      return Row(
-                        children: [...filters, const Spacer(), todayFilter],
-                      );
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              Expanded(
-                child: ListView.builder(
-                  itemCount: filteredList.length,
-                  itemBuilder: (context, index) {
-                    final item = filteredList[index];
-                    final isRegistered = item is UserProfile;
-
-                    final stats = isRegistered ? userStats[item.uid] : null;
-                    final completed =
-                        stats?['total_days_completed'] as num? ?? 0;
-                    final totalDays = targetIndex > 0 ? targetIndex : 1;
-                    final progress = (completed / totalDays * 100)
-                        .toStringAsFixed(1);
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      child: InkWell(
-                        onTap: isRegistered
-                            ? () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        UserDetailScreen(user: item),
-                                  ),
-                                );
-                              }
-                            : null,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 18,
-                                backgroundColor: isRegistered
-                                    ? Colors.blue
-                                    : Colors.grey,
-                                child: Icon(
-                                  isRegistered
-                                      ? Icons.check
-                                      : Icons.person_outline,
-                                  color: Colors.white,
-                                  size: 16,
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    child: InkWell(
+                      onTap: isRegistered
+                          ? () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => UserDetailScreen(user: item),
                                 ),
+                              );
+                            }
+                          : null,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: isRegistered
+                                  ? Colors.blue
+                                  : Colors.grey,
+                              child: Icon(
+                                isRegistered
+                                    ? Icons.check
+                                    : Icons.person_outline,
+                                color: Colors.white,
+                                size: 16,
                               ),
-                              const SizedBox(width: 12),
-                              // Left Area: User Info (flex 1)
-                              Expanded(
-                                flex: 1,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      isRegistered
-                                          ? item.name
-                                          : (item as ChurchRoster).name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(width: 12),
+                            // Left Area: User Info (flex 1)
+                            Expanded(
+                              flex: 1,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    isRegistered
+                                        ? item.name
+                                        : (item as ChurchRoster).name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
                                     ),
-                                    const SizedBox(height: 2),
-                                    Wrap(
-                                      spacing: 8,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Wrap(
+                                    spacing: 8,
+                                    children: [
+                                      Text(
+                                        FormatHelper.formatPhone(
+                                          isRegistered
+                                              ? item.phoneNumber
+                                              : (item as ChurchRoster)
+                                                    .phoneNumber,
+                                        ),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                      Text(
+                                        isRegistered
+                                            ? (item.birthDate ?? "")
+                                            : (item as ChurchRoster).birthDate,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[500],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Right Area: Progress Info (flex 1)
+                            Expanded(
+                              flex: 1,
+                              child: isRegistered
+                                  ? Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Text(
-                                          FormatHelper.formatPhone(
-                                            isRegistered
-                                                ? item.phoneNumber
-                                                : (item as ChurchRoster)
-                                                      .phoneNumber,
-                                          ),
-                                          style: TextStyle(
+                                          "$completed/$totalDays ($progress%)",
+                                          style: const TextStyle(
                                             fontSize: 12,
-                                            color: Colors.grey[700],
+                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                        Text(
-                                          isRegistered
-                                              ? (item.birthDate ?? "")
-                                              : (item as ChurchRoster)
-                                                    .birthDate,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[500],
+                                        const SizedBox(height: 4),
+                                        SizedBox(
+                                          width: 100,
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                            child: LinearProgressIndicator(
+                                              value: completed / totalDays,
+                                              backgroundColor: Colors.grey[200],
+                                              color: Colors.green,
+                                              minHeight: 6,
+                                            ),
                                           ),
                                         ),
                                       ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Right Area: Progress Info (flex 1)
-                              Expanded(
-                                flex: 1,
-                                child: isRegistered
-                                    ? Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            "$completed/$totalDays ($progress%)",
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          SizedBox(
-                                            width: 100,
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                              child: LinearProgressIndicator(
-                                                value: completed / totalDays,
-                                                backgroundColor:
-                                                    Colors.grey[200],
-                                                color: Colors.green,
-                                                minHeight: 6,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    : const Align(
-                                        alignment: Alignment.centerRight,
-                                        child: Text(
-                                          "미등록",
-                                          style: TextStyle(
-                                            color: Colors.orange,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                    )
+                                  : const Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        "미등록",
+                                        style: TextStyle(
+                                          color: Colors.orange,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.chevron_right,
-                                size: 16,
-                                color: Colors.grey,
-                              ),
-                            ],
-                          ),
+                                    ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                }, childCount: filteredList.length),
               ),
+              const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(

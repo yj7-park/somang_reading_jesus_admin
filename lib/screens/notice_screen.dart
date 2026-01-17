@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/notice.dart';
 import '../services/notice_service.dart';
+import '../widgets/one_ui_app_bar.dart';
 
 class NoticeScreen extends StatefulWidget {
   const NoticeScreen({super.key});
@@ -12,13 +13,19 @@ class NoticeScreen extends StatefulWidget {
 
 class _NoticeScreenState extends State<NoticeScreen> {
   final NoticeService _service = NoticeService();
+  late final Stream<List<Notice>> _listStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _listStream = _service.getNoticeStream();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('공지사항 관리')),
       body: StreamBuilder<List<Notice>>(
-        stream: _service.getNoticeStream(),
+        stream: _listStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -28,66 +35,87 @@ class _NoticeScreenState extends State<NoticeScreen> {
           }
 
           final list = snapshot.data!;
-          if (list.isEmpty) return const Center(child: Text("등록된 공지사항이 없습니다."));
+          if (list.isEmpty) {
+            return CustomScrollView(
+              slivers: [
+                const SliverOneUIAppBar(title: '공지사항 관리'),
+                const SliverFillRemaining(
+                  child: Center(child: Text("등록된 공지사항이 없습니다.")),
+                ),
+              ],
+            );
+          }
 
-          return ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, index) {
-              final item = list[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ExpansionTile(
-                  title: Text(
-                    item.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    '작성일: ${DateFormat('yyyy-MM-dd').format(item.createdAt ?? DateTime.now())}  |  푸시: ${item.sentPush ? "발송됨" : "미발송"}',
-                  ),
-                  trailing: Switch(
-                    value: item.isVisible,
-                    onChanged: (val) {
-                      _service.updateNotice(
-                        Notice(
-                          id: item.id,
-                          title: item.title,
-                          body: item.body,
-                          isVisible: val, // toggle
-                          sentPush: item.sentPush,
-                          createdAt: item.createdAt,
-                        ),
-                      );
-                    },
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: Text(item.body),
-                      ),
+          return CustomScrollView(
+            slivers: [
+              const SliverOneUIAppBar(title: '공지사항 관리'),
+              SliverList(
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final item = list[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                    OverflowBar(
+                    child: ExpansionTile(
+                      title: Text(
+                        item.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        '작성일: ${DateFormat('yyyy-MM-dd').format(item.createdAt ?? DateTime.now())}  |  푸시: ${item.sentPush ? "발송됨" : "미발송"}',
+                      ),
+                      trailing: Switch(
+                        value: item.isVisible,
+                        onChanged: (val) {
+                          _service.updateNotice(
+                            Notice(
+                              id: item.id,
+                              title: item.title,
+                              body: item.body,
+                              isVisible: val, // toggle
+                              sentPush: item.sentPush,
+                              createdAt: item.createdAt,
+                            ),
+                          );
+                        },
+                      ),
                       children: [
-                        TextButton.icon(
-                          icon: const Icon(Icons.edit),
-                          label: const Text("수정"),
-                          onPressed: () => _showDialog(context, notice: item),
-                        ),
-                        TextButton.icon(
-                          icon: const Icon(Icons.delete, color: Colors.grey),
-                          label: const Text(
-                            "삭제",
-                            style: TextStyle(color: Colors.grey),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Text(item.body),
                           ),
-                          onPressed: () => _service.deleteNotice(item.id),
+                        ),
+                        OverflowBar(
+                          children: [
+                            TextButton.icon(
+                              icon: const Icon(Icons.edit),
+                              label: const Text("수정"),
+                              onPressed: () =>
+                                  _showDialog(context, notice: item),
+                            ),
+                            TextButton.icon(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Colors.grey,
+                              ),
+                              label: const Text(
+                                "삭제",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                              onPressed: () => _service.deleteNotice(item.id),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-              );
-            },
+                  );
+                }, childCount: list.length),
+              ),
+              const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+            ],
           );
         },
       ),

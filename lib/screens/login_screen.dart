@@ -132,13 +132,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.blue.shade50,
                   shape: BoxCircle.circle,
                 ),
-                child: const Icon(
-                  Icons.admin_panel_settings,
-                  size: 48,
-                  color: Colors.blue,
+                child: Image.asset(
+                  'assets/icon/official_icon_transparent.png',
+                  width: 100,
+                  height: 100,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               const Text(
                 "관리자 로그인",
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),

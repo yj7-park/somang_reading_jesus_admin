@@ -106,7 +106,7 @@ class StatsService {
       '50대': {'total': 0, 'completed': 0},
       '60대': {'total': 0, 'completed': 0},
       '70대+': {'total': 0, 'completed': 0},
-      '미기재': {'total': 0, 'completed': 0},
+      '미상': {'total': 0, 'completed': 0},
     };
 
     for (var doc in usersSnap.docs) {
@@ -122,7 +122,7 @@ class StatsService {
             "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
       }
 
-      String ageGroup = '미기재';
+      String ageGroup = '미상';
       if (dobStr != null && dobStr.length >= 4) {
         try {
           int birthYear = int.parse(dobStr.substring(0, 4));
@@ -269,7 +269,7 @@ class StatsService {
             '50대': {'total': 0, 'completed': 0},
             '60대': {'total': 0, 'completed': 0},
             '70대+': {'total': 0, 'completed': 0},
-            '미기재': {'total': 0, 'completed': 0},
+            '미상': {'total': 0, 'completed': 0},
           };
 
           for (var doc in usersSnap.docs) {
@@ -285,7 +285,7 @@ class StatsService {
                   "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
             }
 
-            String ageGroup = '미기재';
+            String ageGroup = '미상';
             if (dobStr != null && dobStr.length >= 4) {
               try {
                 int birthYear = int.parse(dobStr.substring(0, 4));

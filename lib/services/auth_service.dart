@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_profile.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -55,18 +56,18 @@ class AuthService {
     if (user == null) return false;
 
     try {
-      print("Checking admin role for UID: ${user.uid}");
       final doc = await _db.collection('users').doc(user.uid).get();
       if (!doc.exists) {
-        print("User document does NOT exist in Firestore for UID: ${user.uid}");
+        debugPrint(
+          "User document does NOT exist in Firestore for UID: ${user.uid}",
+        );
         return false;
       }
 
       final profile = UserProfile.fromFirestore(doc);
-      print("User role found: ${profile.role}");
       return profile.role == 'admin';
     } catch (e) {
-      print("Error checking admin role: $e");
+      debugPrint("Error checking admin role: $e");
       return false;
     }
   }
