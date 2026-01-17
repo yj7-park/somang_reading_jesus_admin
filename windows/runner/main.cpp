@@ -27,7 +27,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"somang_reading_jesus_admin", origin, size)) {
+  if (!window.Create(L"리딩지저스 매니저", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

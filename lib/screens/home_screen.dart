@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
       NavigationRailDestination(
         icon: Icon(Icons.calendar_month_outlined),
         selectedIcon: Icon(Icons.calendar_month),
-        label: Text('통독 일정'),
+        label: Text('일정 관리'),
       ),
       NavigationRailDestination(
         icon: Icon(Icons.video_library_outlined),
@@ -85,61 +85,83 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ];
 
-    return Scaffold(
-      appBar: null,
-      body: Row(
-        children: [
-          if (!isMobile) ...[
-            NavigationRail(
-              selectedIndex: navProvider.selectedIndex,
-              onDestinationSelected: (int index) {
-                navProvider.setIndex(index);
-              },
-              labelType: NavigationRailLabelType.all,
-              leading: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 30.0),
-                child: Image.asset(
-                  'assets/icon/official_icon_transparent.png',
-                  width: 80,
-                  height: 80,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final bool poppedTab = navProvider.popTab();
+        if (!poppedTab) {
+          // No more history, allow app to exit or navigator to pop
+          if (context.mounted) {
+            final NavigatorState navigator = Navigator.of(context);
+            if (navigator.canPop()) {
+              navigator.pop(result);
+            } else {
+              // If we are at the root, we might want to close the app or let the system handle it.
+              // For PopScope with canPop: false, if we want to actually exit,
+              // we need to set canPop: true and pop again or use SystemNavigator.pop()
+              // Here we simplify by assuming if there's no tab history and no navigator pop,
+              // we might want to exit.
+            }
+          }
+        }
+      },
+      child: Scaffold(
+        appBar: null,
+        body: Row(
+          children: [
+            if (!isMobile) ...[
+              NavigationRail(
+                selectedIndex: navProvider.selectedIndex,
+                onDestinationSelected: (int index) {
+                  navProvider.setIndex(index);
+                },
+                labelType: NavigationRailLabelType.all,
+                leading: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 30.0),
+                  child: Image.asset(
+                    'assets/icon/official_icon_transparent.png',
+                    width: 80,
+                    height: 80,
+                  ),
+                ),
+                destinations: destinations,
+                trailing: Expanded(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: const AdminProfileButton(showLabel: true),
+                    ),
+                  ),
                 ),
               ),
-              destinations: destinations,
-              trailing: Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: const AdminProfileButton(showLabel: true),
+              const VerticalDivider(thickness: 1, width: 1),
+            ],
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1000),
+                  child: IndexedStack(
+                    index: navProvider.selectedIndex,
+                    children: _screens,
                   ),
                 ),
               ),
             ),
-            const VerticalDivider(thickness: 1, width: 1),
           ],
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1000),
-                child: IndexedStack(
-                  index: navProvider.selectedIndex,
-                  children: _screens,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
+        bottomNavigationBar: isMobile
+            ? BottomNavigationBar(
+                currentIndex: navProvider.selectedIndex,
+                onTap: (index) => navProvider.setIndex(index),
+                type: BottomNavigationBarType.fixed,
+                selectedItemColor: Colors.blue,
+                unselectedItemColor: Colors.grey,
+                items: bottomDestinations,
+              )
+            : null,
       ),
-      bottomNavigationBar: isMobile
-          ? BottomNavigationBar(
-              currentIndex: navProvider.selectedIndex,
-              onTap: (index) => navProvider.setIndex(index),
-              type: BottomNavigationBarType.fixed,
-              selectedItemColor: Colors.blue,
-              unselectedItemColor: Colors.grey,
-              items: bottomDestinations,
-            )
-          : null,
     );
   }
 }

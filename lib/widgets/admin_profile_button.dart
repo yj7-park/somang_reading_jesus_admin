@@ -45,10 +45,10 @@ class AdminProfileButton extends StatelessWidget {
               roleLabel = '관리자';
               break;
             case 'leader':
-              roleLabel = '팀리더';
+              roleLabel = '팀장';
               break;
             case 'member':
-              roleLabel = '멤버';
+              roleLabel = '팀원';
               break;
             default:
               roleLabel = profile.role ?? '사용자';

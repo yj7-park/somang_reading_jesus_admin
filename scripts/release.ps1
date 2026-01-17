@@ -2,7 +2,6 @@
 # Usage: .\scripts\release.ps1
 
 $projectName = "somang_reading_jesus_admin"
-$secondaryRemote = "somang_reading_jesus"
 
 # 1. Get version from pubspec.yaml
 Write-Host "Reading version from pubspec.yaml..." -ForegroundColor Cyan
@@ -108,14 +107,6 @@ if ($webDeploy -eq "y") {
     Remove-Item -Recurse -Force $tempDir
     
     Write-Host "Web deployment successfully pushed to gh-pages." -ForegroundColor Green
-}
-
-# 11. Optional Sync to Secondary Remote
-$syncTarget = Read-Host "Sync tags to $secondaryRemote? (y/n)"
-if ($syncTarget -eq "y") {
-    Write-Host "Pushing to $secondaryRemote..." -ForegroundColor Cyan
-    git push $secondaryRemote main
-    git push $secondaryRemote $tagName
 }
 
 Write-Host "Release $tagName completed successfully!" -ForegroundColor Green

@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [ChangeNotifierProvider(create: (_) => NavigationProvider())],
       child: MaterialApp(
-        title: 'Somang Reading Jesus Admin',
+        title: '리딩지저스 매니저',
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),

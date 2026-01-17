@@ -48,7 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           return CustomScrollView(
             slivers: [
-              const SliverOneUIAppBar(title: '통독 현황'),
+              const SliverOneUIAppBar(title: '리딩지저스 현황'),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),

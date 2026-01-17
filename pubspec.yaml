@@ -102,8 +102,8 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 msix_config:
-  display_name: 리딩지저스 성경 읽기 관리자 프로그램
-  publisher_display_name: 소망교회
+  display_name: 리딩지저스 매니저
+  publisher_display_name: 박용준
   publisher: CN=SomangChurch, O=SomangChurch, L=Seoul, S=Seoul, C=KR
   identity_name: com.somang.reading.jesus.admin
   msix_version: 1.2.0.0
