@@ -279,9 +279,14 @@ class _UserListScreenState extends State<UserListScreen> {
                   final isRegistered = item is UserProfile;
 
                   final stats = isRegistered ? userStats[item.uid] : null;
-                  final completed = stats?['total_days_completed'] as num? ?? 0;
                   final totalDays = targetIndex > 0 ? targetIndex : 1;
+                  final completed =
+                      (stats?['total_days_completed'] as num? ?? 0).clamp(
+                        0,
+                        totalDays,
+                      );
                   final progress = (completed / totalDays * 100)
+                      .clamp(0, 100)
                       .toStringAsFixed(1);
 
                   return Card(
@@ -475,7 +480,7 @@ class _UserListScreenState extends State<UserListScreen> {
   Widget _buildTodayFilterChip(NavigationProvider navProvider) {
     final bool isSelected = navProvider.showOnlyTodayReaders;
     return FilterChip(
-      label: const Text("오늘의 통독자", style: TextStyle(fontSize: 12)),
+      label: const Text("현재 통독자", style: TextStyle(fontSize: 12)),
       selected: isSelected,
       onSelected: (selected) {
         navProvider.setShowOnlyTodayReaders(selected);

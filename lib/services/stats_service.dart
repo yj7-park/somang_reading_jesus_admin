@@ -15,12 +15,34 @@ class StatsService {
   // Get Count of users who read today (Collection Group Query on 'summary')
   // We assume 'stats/summary' doc has 'lastReadDate'
   Future<int> getTodayReadersCount() async {
+    // This value is actually derived from streams in the dashboard,
+    // but if needed as a single future, we'd need to fetch schedule + stats.
+    // For now, simpler to just return 0 or implement fully if used elsewhere.
+    // Given the request context, this method might be legacy or less used,
+    // but let's update it to be consistent if possible, or just leave it
+    // if it's not the main source. The Dashboard uses getStatsStream.
+    // Let's implement it correctly.
+
     final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day).toIso8601String();
+    final year = now.year.toString();
+    final scheduleDoc = await _db
+        .collection('config')
+        .doc('schedule')
+        .collection('years')
+        .doc(year)
+        .get();
+
+    int targetIndex = 0;
+    if (scheduleDoc.exists) {
+      final schedule = ReadingSchedule.fromFirestore(scheduleDoc);
+      targetIndex = DateHelper.getReadingIndex(now, schedule) + 1;
+    }
+
+    if (targetIndex <= 0) return 0;
 
     final countQuery = await _db
         .collectionGroup('stats')
-        .where('last_completed_date', isGreaterThanOrEqualTo: todayStart)
+        .where('total_days_completed', isGreaterThanOrEqualTo: targetIndex)
         .count()
         .get();
 
@@ -172,43 +194,28 @@ class StatsService {
         .snapshots();
 
     return scheduleStream.switchMap((scheduleDoc) {
-      // Calculate today's reading position
-      int year = now.year;
-      int week = -1;
-      int day = -1;
       int targetIndex = 0;
 
       if (scheduleDoc.exists) {
         final schedule = ReadingSchedule.fromFirestore(scheduleDoc);
         targetIndex = DateHelper.getReadingIndex(now, schedule) + 1;
         final pos = DateHelper.getReadingPosition(now, schedule);
+        // Position logic removed as we don't query via completions anymore
         if (pos != null) {
-          year = pos.year;
-          week = pos.week;
-          day = pos.day;
+          // year = pos.year; // Unused
+          // week = pos.week; // Unused
+          // day = pos.day;   // Unused
         }
       }
 
-      // 2. Today's completions query
-      Stream<QuerySnapshot> completionsStream;
-      if (week != -1) {
-        completionsStream = _db
-            .collectionGroup('completions')
-            .where('year', isEqualTo: year)
-            .where('week', isEqualTo: week)
-            .where('day', isEqualTo: day)
-            .snapshots();
-      } else {
-        completionsStream = Stream.value(null).cast<QuerySnapshot>();
-      }
+      // 2. Filter completions (removed - using stats instead)
 
       // 3. Combine with Users and Total Stats
-      return CombineLatestStream.combine4(
+      return CombineLatestStream.combine3(
         _db.collection('users').snapshots(),
         _db.collectionGroup('stats').snapshots(),
-        completionsStream,
-        Stream.value(scheduleDoc), // Pass through
-        (usersSnap, statsSnap, QuerySnapshot? completionsSnap, _) {
+        Stream.value(scheduleDoc),
+        (usersSnap, statsSnap, _) {
           final userCount = usersSnap.docs.length;
           if (userCount == 0) {
             return {
@@ -223,22 +230,9 @@ class StatsService {
               .map((d) => d.id)
               .toSet();
 
-          // Today's readers calculation (Unique Users who completed TODAY'S task)
-          Set<String> todayReaderUids = {};
-          if (completionsSnap != null) {
-            for (var doc in completionsSnap.docs) {
-              final parentDoc = doc.reference.parent.parent;
-              if (parentDoc != null) {
-                final uid = parentDoc.id;
-                if (existingUserUids.contains(uid)) {
-                  todayReaderUids.add(uid);
-                }
-              }
-            }
-          }
-
-          // Progress calculation
+          // Progress calculation & Today's Readers (>= targetIndex)
           double totalCompletionRatio = 0.0;
+          Set<String> todayReaderUids = {};
           Map<String, int> userProgressMap = {};
 
           for (var doc in statsSnap.docs) {
@@ -255,6 +249,9 @@ class StatsService {
 
             if (targetIndex > 0) {
               totalCompletionRatio += (completed / targetIndex).clamp(0.0, 1.0);
+              if (completed >= targetIndex) {
+                todayReaderUids.add(uid);
+              }
             }
           }
 

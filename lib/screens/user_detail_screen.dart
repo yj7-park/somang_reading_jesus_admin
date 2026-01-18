@@ -57,22 +57,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   }
 
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) async {
-    // 1. Block future dates (tomorrow and beyond)
-    final now = DateTime.now();
-    final bool isFuture =
-        selectedDay.year > now.year ||
-        (selectedDay.year == now.year && selectedDay.month > now.month) ||
-        (selectedDay.year == now.year &&
-            selectedDay.month == now.month &&
-            selectedDay.day > now.day);
-
-    if (isFuture) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("미래 날짜는 선택할 수 없습니다.")));
-      return;
-    }
-
     // 2. Block Sundays
     if (selectedDay.weekday == DateTime.sunday) {
       ScaffoldMessenger.of(
@@ -275,15 +259,6 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                             return false;
                           },
                           enabledDayPredicate: (day) {
-                            final now = DateTime.now();
-                            final bool isFuture =
-                                day.year > now.year ||
-                                (day.year == now.year &&
-                                    day.month > now.month) ||
-                                (day.year == now.year &&
-                                    day.month == now.month &&
-                                    day.day > now.day);
-                            if (isFuture) return false;
                             if (day.weekday == DateTime.sunday) return false;
                             if (_currentSchedule == null) return true;
                             for (final holiday in _currentSchedule!.holidays) {

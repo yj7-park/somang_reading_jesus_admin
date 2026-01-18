@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isCodeSent = false;
   String? _verificationId;
   String? _errorMessage;
+  String? _unauthorizedUid;
 
   Future<void> _sendCode() async {
     final phone = _phoneController.text.trim();
@@ -89,8 +90,9 @@ class _LoginScreenState extends State<LoginScreen> {
           setState(() {
             _isLoading = false;
             _isCodeSent = false;
-            _errorMessage =
-                "관리 권한이 없는 계정입니다.\nUID: $uid\n(Firestore에 위 UID로 문서를 생성하고 role: 'admin'을 추가해 주세요.)";
+            _unauthorizedUid = uid;
+            _phoneController.clear();
+            _otpController.clear();
           });
         }
       }
@@ -138,101 +140,142 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 100,
                 ),
               ),
+
               const SizedBox(height: 32),
-              const Text(
-                "리딩지저스 매니저",
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "리딩지저스 통독 관리 시스템",
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 40),
-              if (_errorMessage != null)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 24),
+              if (_unauthorizedUid != null) ...[
+                const Text(
+                  "접근 권한 없음",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text("관리자 권한이 없는 계정입니다.", style: TextStyle(fontSize: 16)),
+                const SizedBox(height: 32),
+                SizedBox(
                   width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade100),
-                  ),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 13),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              if (!_isCodeSent)
-                TextField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: "휴대폰 번호",
-                    prefixIcon: Icon(Icons.phone_android_outlined),
-                    border: OutlineInputBorder(),
-                    hintText: "01012345678",
-                  ),
-                  keyboardType: TextInputType.phone,
-                  onSubmitted: (_) => _sendCode(),
-                )
-              else
-                TextField(
-                  controller: _otpController,
-                  decoration: const InputDecoration(
-                    labelText: "인증번호 (6자리)",
-                    prefixIcon: Icon(Icons.lock_clock_outlined),
-                    border: OutlineInputBorder(),
-                    hintText: "123456",
-                  ),
-                  keyboardType: TextInputType.number,
-                  onSubmitted: (_) => _verifyAndLogin(),
-                ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: _isLoading
-                      ? null
-                      : (_isCodeSent ? _verifyAndLogin : _sendCode),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _unauthorizedUid = null;
+                        _errorMessage = null;
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    elevation: 0,
+                    child: const Text(
+                      "처음으로 돌아가기",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Text(
-                          _isCodeSent ? "인증 및 로그인" : "인증번호 발송",
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                 ),
-              ),
-              if (_isCodeSent)
-                TextButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () => setState(() {
-                          _isCodeSent = false;
-                          _errorMessage = null;
-                        }),
-                  child: const Text("번호 다시 입력하기"),
+              ] else ...[
+                const Text(
+                  "리딩지저스 매니저",
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  "리딩지저스 통독 관리 시스템",
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 40),
+                if (_errorMessage != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 24),
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade100),
+                    ),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                if (!_isCodeSent)
+                  TextField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(
+                      labelText: "휴대폰 번호",
+                      prefixIcon: Icon(Icons.phone_android_outlined),
+                      border: OutlineInputBorder(),
+                      hintText: "01012345678",
+                    ),
+                    keyboardType: TextInputType.phone,
+                    onSubmitted: (_) => _sendCode(),
+                  )
+                else
+                  TextField(
+                    controller: _otpController,
+                    decoration: const InputDecoration(
+                      labelText: "인증번호 (6자리)",
+                      prefixIcon: Icon(Icons.lock_clock_outlined),
+                      border: OutlineInputBorder(),
+                      hintText: "123456",
+                    ),
+                    keyboardType: TextInputType.number,
+                    onSubmitted: (_) => _verifyAndLogin(),
+                  ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: _isLoading
+                        ? null
+                        : (_isCodeSent ? _verifyAndLogin : _sendCode),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            _isCodeSent ? "인증 및 로그인" : "인증번호 발송",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+                if (_isCodeSent)
+                  TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => setState(() {
+                            _isCodeSent = false;
+                            _errorMessage = null;
+                          }),
+                    child: const Text("번호 다시 입력하기"),
+                  ),
+              ],
               const SizedBox(height: 20),
               Text(
                 "Copy Right © 2026 소망교회",

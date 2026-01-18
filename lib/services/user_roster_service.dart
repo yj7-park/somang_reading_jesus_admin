@@ -86,46 +86,28 @@ class UserAndRosterService {
         .snapshots();
 
     return scheduleStream.switchMap((scheduleDoc) {
-      // Calculate today's reading position
-      int year = now.year;
-      int week = -1;
-      int day = -1;
-
       int targetIndex = 0;
 
       if (scheduleDoc.exists) {
         final schedule = ReadingSchedule.fromFirestore(scheduleDoc);
         targetIndex = DateHelper.getReadingIndex(now, schedule) + 1;
         final pos = DateHelper.getReadingPosition(now, schedule);
+        // Position logic removed as we don't query via completions anymore
         if (pos != null) {
-          year = pos.year;
-          week = pos.week;
-          day = pos.day;
+          // year = pos.year; // Unused
+          // week = pos.week; // Unused
+          // day = pos.day;   // Unused
         }
       }
 
-      // 2. Composed Query for today's completions
-      // If today is not a reading day (week/day == -1), we return an empty stream or a dummy one.
-      Stream<QuerySnapshot> completionsStream;
-      if (week != -1) {
-        completionsStream = _db
-            .collectionGroup('completions')
-            .where('year', isEqualTo: year)
-            .where('week', isEqualTo: week)
-            .where('day', isEqualTo: day)
-            .snapshots();
-      } else {
-        // Return a dummy stream with no results for non-reading days
-        completionsStream = Stream.value(null).cast<QuerySnapshot>();
-        // Note: This needs careful handling in combine.
-      }
+      // 2. Filter completions (removed - using stats instead)
 
-      return CombineLatestStream.combine4(
+      // 3. Combine
+      return CombineLatestStream.combine3(
         _usersRef.snapshots(),
         _rosterRef.snapshots(),
-        completionsStream,
         _db.collectionGroup('stats').snapshots(),
-        (usersSnap, rosterSnap, QuerySnapshot? completionsSnap, statsSnap) {
+        (usersSnap, rosterSnap, statsSnap) {
           final users = usersSnap.docs
               .map((d) => UserProfile.fromFirestore(d))
               .toList();
@@ -133,21 +115,21 @@ class UserAndRosterService {
               .map((d) => ChurchRoster.fromFirestore(d))
               .toList();
 
-          Set<String> todayCompletedUids = {};
-          if (completionsSnap != null) {
-            for (var doc in completionsSnap.docs) {
-              final parentDoc = doc.reference.parent.parent;
-              if (parentDoc != null) {
-                todayCompletedUids.add(parentDoc.id);
-              }
-            }
-          }
-
           Map<String, Map<String, dynamic>> statsMap = {};
+          Set<String> todayCompletedUids = {};
+
           for (var doc in statsSnap.docs) {
             final parentDoc = doc.reference.parent.parent;
             if (parentDoc != null) {
-              statsMap[parentDoc.id] = doc.data();
+              final uid = parentDoc.id;
+              final data = doc.data();
+              statsMap[uid] = data;
+
+              final completed = (data['total_days_completed'] as num? ?? 0)
+                  .toInt();
+              if (targetIndex > 0 && completed >= targetIndex) {
+                todayCompletedUids.add(uid);
+              }
             }
           }
 

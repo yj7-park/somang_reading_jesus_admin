@@ -90,7 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 },
                               ),
                               _buildStatCard(
-                                title: "오늘 통독자",
+                                title: "현재 통독자",
                                 value: "$todayReaders명",
                                 subtitle: totalUsers > 0
                                     ? "${((todayReaders / totalUsers) * 100).toStringAsFixed(1)}%"
